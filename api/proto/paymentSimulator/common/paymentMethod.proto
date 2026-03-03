@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package paymentSimulator.common;
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/domain/dto;dto";
+
+enum PaymentMethod {
+  PAYMENT_METHOD_UNSPECIFIED = 0;
+  PAYMENT_METHOD_CREDIT_CARD = 1;
+}

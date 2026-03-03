@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package paymentSimulator.payment.v1;
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/domain/dto;dto";
+
+import "google/protobuf/timestamp.proto";
+import "paymentSimulator/common/money.proto";
+import "paymentSimulator/common/paymentMethod.proto";
+
+message PaymentRequest{
+  string payment_request_id = 1;
+  string invoice_number = 2;
+
+  paymentSimulator.common.Money total = 4;
+
+  google.protobuf.Timestamp issued_at = 5;
+  google.protobuf.Timestamp expires_at = 6;
+
+  BookingSummary booking = 7;
+  PayerSummary payer = 8;
+
+  repeated PaymentOption options = 9;
+}
+
+message PaymentOption {
+  paymentSimulator.common.PaymentMethod method = 1;
+
+  string payment_url = 2;
+  string instructions = 3;
+}
+
+message BookingSummary {
+  string cottage_name = 2;
+  int32 nights = 3;
+  int32 number_of_guests = 4;
+}
+
+message PayerSummary {
+  string name = 1;
+  string email = 2;
+}

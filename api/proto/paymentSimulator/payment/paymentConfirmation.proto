@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package paymentSimulator.payment.v1;
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/domain/dto;dto";
+
+import "google/protobuf/timestamp.proto";
+import "paymentSimulator/common/money.proto";
+import "paymentSimulator/common/paymentMethod.proto";
+import "paymentSimulator/common/cardSummary.proto";
+
+message PaymentConfirmation {
+  string id = 1;
+  string payment_intent_id = 2;
+  string booking_id = 4;
+
+  paymentSimulator.common.Money amount = 5;
+
+  paymentSimulator.common.PaymentMethod method = 6;
+
+  string receipt_id = 7;
+  paymentSimulator.common.CardSummary card = 8;
+
+  google.protobuf.Timestamp confirmed_at = 10;
+}

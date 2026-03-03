@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package paymentSimulator.payment.v1;
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/app;app";
+
+import "google/api/annotations.proto";
+import "paymentSimulator/payment/paymentMakingCard.proto";
+
+service PaymentMakingCardService {
+  rpc PayWithCard(PayWithCardRequest) returns (PayWithCardResponse) {
+    option (google.api.http) = {
+      post: "/v1/payments/card:pay"
+      body: "*"
+    };
+  }
+}

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package paymentSimulator.invoice;
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/domain/dto;dto";
+
+import "paymentSimulator/common/money.proto";
+import "google/protobuf/timestamp.proto";
+
+message CreateInvoicePaymentRequest {
+  string idempotency_key = 1;
+
+  string booking_id = 3;
+  string payer_id = 4;
+
+  Payer payer = 5;
+  BookingSnapshot booking = 6;
+
+  // Amounts
+  paymentSimulator.common.Money total = 7;
+  paymentSimulator.common.Money tax_total = 8;
+  paymentSimulator.common.Money discount_total = 9;
+}
+
+message Payer {
+  string name = 1;
+  string email = 2;
+  string document_number = 3;
+  string billing_address = 4;
+}
+
+message BookingSnapshot {
+  string cottage_name = 1;
+  int32 nights = 2;
+  int32 number_of_guests = 3;
+  paymentSimulator.common.Money value_per_night = 4;
+}

@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package paymentSimulator.payment.v1;
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/domain/dto;dto";
+
+import "google/protobuf/timestamp.proto";
+import "paymentSimulator/common/cardSummary.proto";
+
+// request
+message PayWithCardRequest {
+  CardInput card = 1;
+  string invoice_id = 2;
+}
+
+message CardInput {
+  string brand = 1;
+  string number = 2;
+  uint32 exp_month = 3;
+  uint32 exp_year = 4;
+  string cvv = 5;
+  string holder_name = 6;
+}
+
+// response
+message PayWithCardResponse {
+  string payment_intent_id = 1;
+  PaymentStatus status = 2;
+  string receipt_id = 3;
+  google.protobuf.Timestamp processed_at = 4;
+  Failure failure = 5;
+  paymentSimulator.common.CardSummary card = 6;
+}
+
+message Failure {
+  FailureCode code = 1;
+  string message = 2;
+}
+
+enum FailureCode {
+  FAILURE_CODE_UNSPECIFIED = 0;
+  FAILURE_CODE_CARD_DECLINED = 1;
+  FAILURE_CODE_INVALID_CARD = 2;
+  FAILURE_CODE_EXPIRED_CARD = 3;
+  FAILURE_CODE_INSUFFICIENT_FUNDS = 4;
+  FAILURE_CODE_PROCESSING_ERROR = 5;
+  FAILURE_CODE_SESSION_EXPIRED = 6;
+  FAILURE_CODE_ALREADY_PAID = 7;
+  FAILURE_CODE_CANCELLED = 8;
+}
+
+enum PaymentStatus {
+  PAYMENT_STATUS_UNSPECIFIED = 0;
+  PAYMENT_STATUS_PENDING = 1;
+  PAYMENT_STATUS_SUCCEEDED = 2;
+  PAYMENT_STATUS_FAILED = 3;
+  PAYMENT_STATUS_EXPIRED = 4;
+  PAYMENT_STATUS_CANCELLED = 5;
+}

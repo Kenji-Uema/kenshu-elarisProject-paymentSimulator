@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package paymentSimulator.common;
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/domain/dto;dto";
+
+message Money {
+  int64 amount = 1;
+  string currency = 2;
+}

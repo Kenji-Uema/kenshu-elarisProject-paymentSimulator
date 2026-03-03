@@ -1,0 +1,19 @@
+version: v2
+plugins:
+  - local: protoc-gen-go
+    out: .
+    opt:
+      - paths=import
+      - module=github.com/Kenji-Uema/paymentSimulator
+  - local: protoc-gen-go-grpc
+    out: .
+    opt:
+      - paths=import
+      - module=github.com/Kenji-Uema/paymentSimulator
+      - MpaymentSimulator/payment/paymentMakingCardService.proto=github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment;payment
+  - local: protoc-gen-grpc-gateway
+    out: .
+    opt:
+      - paths=import
+      - module=github.com/Kenji-Uema/paymentSimulator
+      - MpaymentSimulator/payment/paymentMakingCardService.proto=github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment;payment
