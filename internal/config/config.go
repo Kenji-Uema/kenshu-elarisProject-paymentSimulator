@@ -15,7 +15,6 @@ func (s Secret) String() string {
 type Configs struct {
 	AppConfig
 	ServerConfig
-	ProbeConfig
 	MongoConfig
 	RabbitMqConfig
 	PaymentExchangeConfig
@@ -31,7 +30,7 @@ type AppConfig struct {
 type ServerConfig struct {
 	Host                       string `env:"SERVICE_HOST,required"`
 	Port                       int    `env:"SERVICE_PORT,required"`
-	ReadHeaderTimeoutInSeconds int    `env:"READ_HEADER_TIMEOUT_IN_SECONDS,required env" envDefault:"5"`
+	ReadHeaderTimeoutInSeconds int    `env:"READ_HEADER_TIMEOUT_IN_SECONDS,required" envDefault:"5"`
 	ReadTimeoutInSeconds       int    `env:"READ_TIMEOUT_IN_SECONDS,required" envDefault:"10"`
 	WriteTimeoutInSeconds      int    `env:"WRITE_TIMEOUT_IN_SECONDS,required" envDefault:"15"`
 	IdleTimeoutInSeconds       int    `env:"IDLE_TIMEOUT_IN_SECONDS,required" envDefault:"60"`
@@ -41,14 +40,9 @@ type PaymentMakingCardConfig struct {
 	FailChance int `env:"FAIL_CHANCE,required"`
 }
 
-type ProbeConfig struct {
-	Address string `env:"PROBE_HTTP_ADDRESS,required"`
-	Port    int    `env:"PROBE_HTTP_PORT,required"`
-}
-
 type MongoConfig struct {
-	Username                        string `env:"MONGO_INITDB_ROOT_USERNAME,required"`
-	Password                        string `env:"MONGO_INITDB_ROOT_PASSWORD,required"`
+	Username                        Secret `env:"MONGO_INITDB_ROOT_USERNAME,required"`
+	Password                        Secret `env:"MONGO_INITDB_ROOT_PASSWORD,required"`
 	Host                            string `env:"MONGO_HOST,required"`
 	Database                        string `env:"MONGO_DATABASE,required"`
 	ReplicaSet                      string `env:"MONGO_REPLICA_SET" envDefault:""`
