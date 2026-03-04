@@ -17,7 +17,9 @@ type Configs struct {
 	ServerConfig
 	MongoConfig
 	RabbitMqConfig
-	PaymentExchangeConfig
+	PaymentPublisherConfig
+	InvoiceConsumerConfig
+	PaymentMakingCardConfig
 	TelemetryConfig
 	LogConfig
 }
@@ -37,7 +39,8 @@ type ServerConfig struct {
 }
 
 type PaymentMakingCardConfig struct {
-	FailChance int `env:"FAIL_CHANCE,required"`
+	Host       string `env:"PAYMENT_MAKING_CARD_HOST,required"`
+	FailChance int    `env:"FAIL_CHANCE,required"`
 }
 
 type MongoConfig struct {
@@ -71,29 +74,23 @@ type RabbitMqConfig struct {
 	Port     int    `env:"RABBITMQ_PORT,required"`
 }
 
-type PaymentExchangeConfig struct {
-	Name           string `env:"PAYMENT_EXCHANGE_NAME,required" envDefault:"ex.payment"`
-	Kind           string `env:"PAYMENT_EXCHANGE_KIND,required" envDefault:"topic"`
-	Durable        bool   `env:"PAYMENT_EXCHANGE_DURABLE,required"`
-	AutoDelete     bool   `env:"PAYMENT_EXCHANGE_AUTO_DELETE,required"`
-	Internal       bool   `env:"PAYMENT_EXCHANGE_INTERNAL,required"`
-	NoWait         bool   `env:"PAYMENT_EXCHANGE_NO_WAIT,required"`
-	ConfirmNotWait bool   `env:"PAYMENT_EXCHANGE_CONFIRM_NOT_WAIT,required"`
+type PaymentPublisherConfig struct {
+	Exchange ExchangeConfig `envPrefix:"PAYMENT_EXCHANGE_"`
+	Publish  PublishConfig  `envPrefix:"PAYMENT_PUBLISH_"`
 }
 
-type InvoiceQueueConfig struct {
-	Name       string `env:"INVOICE_QUEUE_NAME,required" envDefault:"q.generate_invoice.worker"`
-	Durable    bool   `env:"INVOICE_QUEUE_DURABLE,required" envDefault:"true"`
-	AutoDelete bool   `env:"INVOICE_QUEUE_AUTO_DELETE,required" envDefault:"false"`
-	Exclusive  bool   `env:"INVOICE_QUEUE_EXCLUSIVE,required" envDefault:"false"`
-	NoWait     bool   `env:"INVOICE_QUEUE_NO_WAIT,required" envDefault:"false"`
+type InvoiceConsumerConfig struct {
+	Queue   QueueConfig   `envPrefix:"INVOICE_QUEUE_"`
+	Binding BindingConfig `envPrefix:"INVOICE_BINDING_"`
+	Consume ConsumeConfig `envPrefix:"INVOICE_CONSUME_"`
 }
 
 type TelemetryConfig struct {
-	OTLPEndpoint   string `env:"OTEL_EXPORTER_OTLP_ENDPOINT,required"`
-	OTLPGrpcPort   int    `env:"OTEL_EXPORTER_OTLP_GRPC_PORT,required"`
-	OTLPHealthPort int    `env:"OTEL_EXPORTER_OTLP_HEALTH_PORT,required"`
-	OTLPInsecure   bool   `env:"OTEL_EXPORTER_OTLP_INSECURE,required"`
+	OTLPEndpoint             string `env:"OTEL_EXPORTER_OTLP_ENDPOINT,required"`
+	OTLPGrpcPort             int    `env:"OTEL_EXPORTER_OTLP_GRPC_PORT,required"`
+	OTLPHealthPort           int    `env:"OTEL_EXPORTER_OTLP_HEALTH_PORT,required"`
+	OTLPInsecure             bool   `env:"OTEL_EXPORTER_OTLP_INSECURE,required"`
+	ShutdownTimeoutInSeconds int    `env:"OTEL_SHUTDOWN_TIMEOUT_IN_SECONDS" envDefault:"15"`
 }
 
 type LogConfig struct {

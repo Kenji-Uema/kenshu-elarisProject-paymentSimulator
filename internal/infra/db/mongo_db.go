@@ -18,11 +18,11 @@ type Db struct {
 	Database *mongo.Database
 }
 
-func NewMongoDbFromConfig(ctx context.Context, cfg config.MongoConfig) (*Db, error) {
+func NewMongoDb(ctx context.Context, cfg config.MongoConfig) (*Db, error) {
 	startCtx, cancel := context.WithTimeout(ctx, time.Duration(cfg.StartupTimeoutInSeconds)*time.Second)
 	defer cancel()
 
-	mongoURI := fmt.Sprintf("mongodb://%s:%s@%s", cfg.Username, cfg.Password, cfg.Host)
+	mongoURI := fmt.Sprintf("mongodb://%s:%s@%s", string(cfg.Username), string(cfg.Password), cfg.Host)
 	clientOptions := options.Client().
 		ApplyURI(mongoURI).
 		SetConnectTimeout(time.Duration(cfg.ConnectionTimeoutInSeconds) * time.Second).

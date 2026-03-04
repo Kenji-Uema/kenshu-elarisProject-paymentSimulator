@@ -54,8 +54,12 @@ func Init(ctx context.Context, cfg config.TelemetryConfig, appCfg config.AppConf
 		return nil, err
 	}
 
+	slog.InfoContext(ctx, "telemetry initialized")
+
 	return func(ctx context.Context) error {
-		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		shutdownTimeout := time.Duration(cfg.ShutdownTimeoutInSeconds) * time.Second
+
+		shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 		defer cancel()
 
 		var shutdownErr error

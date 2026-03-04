@@ -11,12 +11,16 @@ import (
 
 type rabbitmqConsumer struct {
 	*RabbitMqConnection
-	channel *amqp.Channel
-	queue   *amqp.Queue
+	channel       *amqp.Channel
+	queue         *amqp.Queue
+	consumeConfig config.ConsumeConfig
 }
 
-func NewRabbitmqConsumer(rabbitMqConnection *RabbitMqConnection) (port.MqConsumer, error) {
-	rabbitmqConsumer := rabbitmqConsumer{RabbitMqConnection: rabbitMqConnection}
+func NewRabbitmqConsumer(rabbitMqConnection *RabbitMqConnection, consumeConfig config.ConsumeConfig) (port.MqConsumer, error) {
+	rabbitmqConsumer := rabbitmqConsumer{
+		RabbitMqConnection: rabbitMqConnection,
+		consumeConfig:      consumeConfig,
+	}
 
 	channel, err := rabbitMqConnection.Channel()
 	if err != nil {
@@ -88,7 +92,7 @@ func (c *rabbitmqConsumer) BindQueue(config config.BindingConfig) error {
 	return nil
 }
 
-func (c *rabbitmqConsumer) Consume(ctx context.Context, config config.ConsumeConfig) (<-chan amqp.Delivery, error) {
+func (c *rabbitmqConsumer) Consume(ctx context.Context) (<-chan amqp.Delivery, error) {
 	if c.channel == nil {
 		ch, err := c.Channel()
 		if err != nil {
@@ -100,12 +104,12 @@ func (c *rabbitmqConsumer) Consume(ctx context.Context, config config.ConsumeCon
 	deliveries, err := c.channel.ConsumeWithContext(
 		ctx,
 		c.queue.Name,
-		config.Consumer,
-		config.AutoAck,
-		config.Exclusive,
-		config.AutoAck,
-		config.NoLocal,
-		config.Args,
+		c.consumeConfig.Consumer,
+		c.consumeConfig.AutoAck,
+		c.consumeConfig.Exclusive,
+		c.consumeConfig.AutoAck,
+		c.consumeConfig.NoLocal,
+		c.consumeConfig.Args,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("start consuming queue %q: %w", c.queue.Name, err)

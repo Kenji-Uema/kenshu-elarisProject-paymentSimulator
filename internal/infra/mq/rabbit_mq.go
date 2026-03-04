@@ -1,6 +1,7 @@
 package mq
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -23,11 +24,13 @@ type RabbitMqConnection struct {
 	closed bool
 }
 
-func NewRabbitMqConnection(cfg config.RabbitMqConfig) (*RabbitMqConnection, error) {
+func NewRabbitMqConnection(ctx context.Context, cfg config.RabbitMqConfig) (*RabbitMqConnection, error) {
 	c := &RabbitMqConnection{cfg: cfg}
 	if err := c.reconnectLocked(); err != nil {
 		return nil, err
 	}
+
+	slog.InfoContext(ctx, "rabbitmq connection established")
 
 	return c, nil
 }

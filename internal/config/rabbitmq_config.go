@@ -3,42 +3,41 @@ package config
 import amqp "github.com/rabbitmq/amqp091-go"
 
 type ExchangeConfig struct {
-	Name       string
-	Kind       string
-	Durable    bool
-	AutoDelete bool
-	Internal   bool
-	NoWait     bool
-	Args       amqp.Table
+	Name       string     `env:"NAME,required"`
+	Kind       string     `env:"KIND,required"`
+	Durable    bool       `env:"DURABLE"`
+	AutoDelete bool       `env:"AUTO_DELETE"`
+	Internal   bool       `env:"INTERNAL"`
+	NoWait     bool       `env:"NO_WAIT"`
+	Args       amqp.Table `env:"ARGS"`
 }
 
 type QueueConfig struct {
-	Name       string
-	Durable    bool
-	AutoDelete bool
-	Exclusive  bool
-	NoWait     bool
-	Args       amqp.Table
+	Name       string     `env:"NAME,required"`
+	Durable    bool       `env:"DURABLE"`
+	AutoDelete bool       `env:"AUTO_DELETE"`
+	Exclusive  bool       `env:"EXCLUSIVE"`
+	NoWait     bool       `env:"NO_WAIT"`
+	Args       amqp.Table `env:"ARGS"`
 }
 
 type BindingConfig struct {
-	ExchangeName string
-	RoutingKey   string
-	NoWait       bool
-	Args         amqp.Table
+	ExchangeName string     `env:"EXCHANGE_NAME"`
+	RoutingKey   string     `env:"ROUTING_KEY"`
+	NoWait       bool       `env:"NO_WAIT"`
+	Args         amqp.Table `env:"ARGS"`
 }
 
 type PublishConfig struct {
-	RoutingKey string
-	Mandatory  bool
-	Immediate  bool
+	Mandatory bool `env:"MANDATORY"`
+	Immediate bool `env:"IMMEDIATE"`
 }
 
 type ConsumeConfig struct {
-	Consumer  string
-	AutoAck   bool
-	Exclusive bool
-	NoLocal   bool
-	NoWait    bool
-	Args      amqp.Table
+	Consumer  string     `env:"CONSUMER"`
+	AutoAck   bool       `env:"AUTO_ACK"`
+	Exclusive bool       `env:"EXCLUSIVE"`
+	NoLocal   bool       `env:"NO_LOCAL"`
+	NoWait    bool       `env:"NO_WAIT"`
+	Args      amqp.Table `env:"ARGS"`
 }

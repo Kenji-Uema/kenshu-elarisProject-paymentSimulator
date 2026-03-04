@@ -23,17 +23,17 @@ const (
 )
 
 type PaymentRequest struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	PaymentRequestId string                 `protobuf:"bytes,1,opt,name=payment_request_id,json=paymentRequestId,proto3" json:"payment_request_id,omitempty"`
-	InvoiceNumber    string                 `protobuf:"bytes,2,opt,name=invoice_number,json=invoiceNumber,proto3" json:"invoice_number,omitempty"`
-	Total            *Money                 `protobuf:"bytes,4,opt,name=total,proto3" json:"total,omitempty"`
-	IssuedAt         *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
-	ExpiresAt        *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	Booking          *BookingSummary        `protobuf:"bytes,7,opt,name=booking,proto3" json:"booking,omitempty"`
-	Payer            *PayerSummary          `protobuf:"bytes,8,opt,name=payer,proto3" json:"payer,omitempty"`
-	Options          []*PaymentOption       `protobuf:"bytes,9,rep,name=options,proto3" json:"options,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InvoiceNumber string                 `protobuf:"bytes,1,opt,name=invoice_number,json=invoiceNumber,proto3" json:"invoice_number,omitempty"`
+	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	Total         *Money                 `protobuf:"bytes,3,opt,name=total,proto3" json:"total,omitempty"`
+	IssuedAt      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	Booking       *BookingSummary        `protobuf:"bytes,6,opt,name=booking,proto3" json:"booking,omitempty"`
+	Payer         *PayerSummary          `protobuf:"bytes,7,opt,name=payer,proto3" json:"payer,omitempty"`
+	Options       []*PaymentOption       `protobuf:"bytes,8,rep,name=options,proto3" json:"options,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PaymentRequest) Reset() {
@@ -66,16 +66,16 @@ func (*PaymentRequest) Descriptor() ([]byte, []int) {
 	return file_paymentSimulator_payment_paymentRequest_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *PaymentRequest) GetPaymentRequestId() string {
+func (x *PaymentRequest) GetInvoiceNumber() string {
 	if x != nil {
-		return x.PaymentRequestId
+		return x.InvoiceNumber
 	}
 	return ""
 }
 
-func (x *PaymentRequest) GetInvoiceNumber() string {
+func (x *PaymentRequest) GetDescription() string {
 	if x != nil {
-		return x.InvoiceNumber
+		return x.Description
 	}
 	return ""
 }
@@ -298,17 +298,17 @@ var File_paymentSimulator_payment_paymentRequest_proto protoreflect.FileDescript
 
 const file_paymentSimulator_payment_paymentRequest_proto_rawDesc = "" +
 	"\n" +
-	"-paymentSimulator/payment/paymentRequest.proto\x12\x1bpaymentSimulator.payment.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#paymentSimulator/common/money.proto\x1a+paymentSimulator/common/paymentMethod.proto\"\xdd\x03\n" +
-	"\x0ePaymentRequest\x12,\n" +
-	"\x12payment_request_id\x18\x01 \x01(\tR\x10paymentRequestId\x12%\n" +
-	"\x0einvoice_number\x18\x02 \x01(\tR\rinvoiceNumber\x124\n" +
-	"\x05total\x18\x04 \x01(\v2\x1e.paymentSimulator.common.MoneyR\x05total\x127\n" +
-	"\tissued_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\x129\n" +
+	"-paymentSimulator/payment/paymentRequest.proto\x12\x1bpaymentSimulator.payment.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#paymentSimulator/common/money.proto\x1a+paymentSimulator/common/paymentMethod.proto\"\xd1\x03\n" +
+	"\x0ePaymentRequest\x12%\n" +
+	"\x0einvoice_number\x18\x01 \x01(\tR\rinvoiceNumber\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x124\n" +
+	"\x05total\x18\x03 \x01(\v2\x1e.paymentSimulator.common.MoneyR\x05total\x127\n" +
+	"\tissued_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\x129\n" +
 	"\n" +
-	"expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12E\n" +
-	"\abooking\x18\a \x01(\v2+.paymentSimulator.payment.v1.BookingSummaryR\abooking\x12?\n" +
-	"\x05payer\x18\b \x01(\v2).paymentSimulator.payment.v1.PayerSummaryR\x05payer\x12D\n" +
-	"\aoptions\x18\t \x03(\v2*.paymentSimulator.payment.v1.PaymentOptionR\aoptions\"\x94\x01\n" +
+	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12E\n" +
+	"\abooking\x18\x06 \x01(\v2+.paymentSimulator.payment.v1.BookingSummaryR\abooking\x12?\n" +
+	"\x05payer\x18\a \x01(\v2).paymentSimulator.payment.v1.PayerSummaryR\x05payer\x12D\n" +
+	"\aoptions\x18\b \x03(\v2*.paymentSimulator.payment.v1.PaymentOptionR\aoptions\"\x94\x01\n" +
 	"\rPaymentOption\x12>\n" +
 	"\x06method\x18\x01 \x01(\x0e2&.paymentSimulator.common.PaymentMethodR\x06method\x12\x1f\n" +
 	"\vpayment_url\x18\x02 \x01(\tR\n" +

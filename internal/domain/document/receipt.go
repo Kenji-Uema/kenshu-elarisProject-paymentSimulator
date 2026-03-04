@@ -11,13 +11,11 @@ type Receipt struct {
 	PaymentIntentId bson.ObjectID `bson:"payment_intent_id"`
 	BookingId       bson.ObjectID `bson:"booking_id"`
 	Amount          Money         `bson:"amount"`
-	Method          PaymentMethod `bson:"method"`
+	Method          string        `bson:"method"`
 	ReceiptId       bson.ObjectID `bson:"receipt_id"`
 	Card            CardSummary   `bson:"card"`
 	ConfirmedAt     *time.Time    `bson:"confirmed_at"`
 }
-
-type PaymentMethod string
 
 type CardSummary struct {
 	Brand string `bson:"brand"`

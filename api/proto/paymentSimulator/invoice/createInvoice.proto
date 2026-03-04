@@ -12,13 +12,16 @@ message CreateInvoicePaymentRequest {
   string booking_id = 3;
   string payer_id = 4;
 
-  Payer payer = 5;
-  BookingSnapshot booking = 6;
+  google.protobuf.Timestamp issuedAt = 5;
+  google.protobuf.Timestamp dueAt = 6;
+
+  Payer payer = 7;
+  BookingSnapshot booking = 8;
 
   // Amounts
-  paymentSimulator.common.Money total = 7;
-  paymentSimulator.common.Money tax_total = 8;
-  paymentSimulator.common.Money discount_total = 9;
+  paymentSimulator.common.Money total = 9;
+  paymentSimulator.common.Money tax_total = 10;
+  paymentSimulator.common.Money discount_total = 11;
 }
 
 message Payer {

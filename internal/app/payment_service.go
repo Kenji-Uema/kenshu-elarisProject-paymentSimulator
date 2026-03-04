@@ -94,7 +94,7 @@ func (s *paymentMakingCardService) PayWithCard(ctx context.Context,
 			Amount:   invoice.Total.Amount,
 			Currency: invoice.Total.Currency,
 		},
-		Method:    document.PaymentMethod(dto.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD.String()),
+		Method:    dto.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD.String(),
 		ReceiptId: receiptBusinessID,
 		Card: document.CardSummary{
 			Brand: req.GetCard().GetBrand(),
@@ -124,11 +124,7 @@ func (s *paymentMakingCardService) PayWithCard(ctx context.Context,
 		ConfirmedAt: timestamppb.New(confirmedAt),
 	}
 
-	if err := s.paymentProducer.Publish(ctx, confirmation, config.PublishConfig{
-		RoutingKey: "payment.confirmation",
-		Mandatory:  false,
-		Immediate:  false,
-	}); err != nil {
+	if err := s.paymentProducer.Publish(ctx, confirmation); err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("publish payment confirmation: %v", err))
 	}
 

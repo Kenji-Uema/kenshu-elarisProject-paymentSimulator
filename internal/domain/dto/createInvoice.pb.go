@@ -9,7 +9,7 @@ package dto
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	_ "google.golang.org/protobuf/types/known/timestamppb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -27,12 +27,14 @@ type CreateInvoicePaymentRequest struct {
 	IdempotencyKey string                 `protobuf:"bytes,1,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	BookingId      string                 `protobuf:"bytes,3,opt,name=booking_id,json=bookingId,proto3" json:"booking_id,omitempty"`
 	PayerId        string                 `protobuf:"bytes,4,opt,name=payer_id,json=payerId,proto3" json:"payer_id,omitempty"`
-	Payer          *Payer                 `protobuf:"bytes,5,opt,name=payer,proto3" json:"payer,omitempty"`
-	Booking        *BookingSnapshot       `protobuf:"bytes,6,opt,name=booking,proto3" json:"booking,omitempty"`
+	IssuedAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=issuedAt,proto3" json:"issuedAt,omitempty"`
+	DueAt          *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=dueAt,proto3" json:"dueAt,omitempty"`
+	Payer          *Payer                 `protobuf:"bytes,7,opt,name=payer,proto3" json:"payer,omitempty"`
+	Booking        *BookingSnapshot       `protobuf:"bytes,8,opt,name=booking,proto3" json:"booking,omitempty"`
 	// Amounts
-	Total         *Money `protobuf:"bytes,7,opt,name=total,proto3" json:"total,omitempty"`
-	TaxTotal      *Money `protobuf:"bytes,8,opt,name=tax_total,json=taxTotal,proto3" json:"tax_total,omitempty"`
-	DiscountTotal *Money `protobuf:"bytes,9,opt,name=discount_total,json=discountTotal,proto3" json:"discount_total,omitempty"`
+	Total         *Money `protobuf:"bytes,9,opt,name=total,proto3" json:"total,omitempty"`
+	TaxTotal      *Money `protobuf:"bytes,10,opt,name=tax_total,json=taxTotal,proto3" json:"tax_total,omitempty"`
+	DiscountTotal *Money `protobuf:"bytes,11,opt,name=discount_total,json=discountTotal,proto3" json:"discount_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -86,6 +88,20 @@ func (x *CreateInvoicePaymentRequest) GetPayerId() string {
 		return x.PayerId
 	}
 	return ""
+}
+
+func (x *CreateInvoicePaymentRequest) GetIssuedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.IssuedAt
+	}
+	return nil
+}
+
+func (x *CreateInvoicePaymentRequest) GetDueAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DueAt
+	}
+	return nil
 }
 
 func (x *CreateInvoicePaymentRequest) GetPayer() *Payer {
@@ -263,17 +279,20 @@ var File_paymentSimulator_invoice_createInvoice_proto protoreflect.FileDescripto
 
 const file_paymentSimulator_invoice_createInvoice_proto_rawDesc = "" +
 	"\n" +
-	",paymentSimulator/invoice/createInvoice.proto\x12\x18paymentSimulator.invoice\x1a#paymentSimulator/common/money.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb6\x03\n" +
+	",paymentSimulator/invoice/createInvoice.proto\x12\x18paymentSimulator.invoice\x1a#paymentSimulator/common/money.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa0\x04\n" +
 	"\x1bCreateInvoicePaymentRequest\x12'\n" +
 	"\x0fidempotency_key\x18\x01 \x01(\tR\x0eidempotencyKey\x12\x1d\n" +
 	"\n" +
 	"booking_id\x18\x03 \x01(\tR\tbookingId\x12\x19\n" +
-	"\bpayer_id\x18\x04 \x01(\tR\apayerId\x125\n" +
-	"\x05payer\x18\x05 \x01(\v2\x1f.paymentSimulator.invoice.PayerR\x05payer\x12C\n" +
-	"\abooking\x18\x06 \x01(\v2).paymentSimulator.invoice.BookingSnapshotR\abooking\x124\n" +
-	"\x05total\x18\a \x01(\v2\x1e.paymentSimulator.common.MoneyR\x05total\x12;\n" +
-	"\ttax_total\x18\b \x01(\v2\x1e.paymentSimulator.common.MoneyR\btaxTotal\x12E\n" +
-	"\x0ediscount_total\x18\t \x01(\v2\x1e.paymentSimulator.common.MoneyR\rdiscountTotal\"\x83\x01\n" +
+	"\bpayer_id\x18\x04 \x01(\tR\apayerId\x126\n" +
+	"\bissuedAt\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\x120\n" +
+	"\x05dueAt\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x05dueAt\x125\n" +
+	"\x05payer\x18\a \x01(\v2\x1f.paymentSimulator.invoice.PayerR\x05payer\x12C\n" +
+	"\abooking\x18\b \x01(\v2).paymentSimulator.invoice.BookingSnapshotR\abooking\x124\n" +
+	"\x05total\x18\t \x01(\v2\x1e.paymentSimulator.common.MoneyR\x05total\x12;\n" +
+	"\ttax_total\x18\n" +
+	" \x01(\v2\x1e.paymentSimulator.common.MoneyR\btaxTotal\x12E\n" +
+	"\x0ediscount_total\x18\v \x01(\v2\x1e.paymentSimulator.common.MoneyR\rdiscountTotal\"\x83\x01\n" +
 	"\x05Payer\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12'\n" +
@@ -302,20 +321,23 @@ var file_paymentSimulator_invoice_createInvoice_proto_goTypes = []any{
 	(*CreateInvoicePaymentRequest)(nil), // 0: paymentSimulator.invoice.CreateInvoicePaymentRequest
 	(*Payer)(nil),                       // 1: paymentSimulator.invoice.Payer
 	(*BookingSnapshot)(nil),             // 2: paymentSimulator.invoice.BookingSnapshot
-	(*Money)(nil),                       // 3: paymentSimulator.common.Money
+	(*timestamppb.Timestamp)(nil),       // 3: google.protobuf.Timestamp
+	(*Money)(nil),                       // 4: paymentSimulator.common.Money
 }
 var file_paymentSimulator_invoice_createInvoice_proto_depIdxs = []int32{
-	1, // 0: paymentSimulator.invoice.CreateInvoicePaymentRequest.payer:type_name -> paymentSimulator.invoice.Payer
-	2, // 1: paymentSimulator.invoice.CreateInvoicePaymentRequest.booking:type_name -> paymentSimulator.invoice.BookingSnapshot
-	3, // 2: paymentSimulator.invoice.CreateInvoicePaymentRequest.total:type_name -> paymentSimulator.common.Money
-	3, // 3: paymentSimulator.invoice.CreateInvoicePaymentRequest.tax_total:type_name -> paymentSimulator.common.Money
-	3, // 4: paymentSimulator.invoice.CreateInvoicePaymentRequest.discount_total:type_name -> paymentSimulator.common.Money
-	3, // 5: paymentSimulator.invoice.BookingSnapshot.value_per_night:type_name -> paymentSimulator.common.Money
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	3, // 0: paymentSimulator.invoice.CreateInvoicePaymentRequest.issuedAt:type_name -> google.protobuf.Timestamp
+	3, // 1: paymentSimulator.invoice.CreateInvoicePaymentRequest.dueAt:type_name -> google.protobuf.Timestamp
+	1, // 2: paymentSimulator.invoice.CreateInvoicePaymentRequest.payer:type_name -> paymentSimulator.invoice.Payer
+	2, // 3: paymentSimulator.invoice.CreateInvoicePaymentRequest.booking:type_name -> paymentSimulator.invoice.BookingSnapshot
+	4, // 4: paymentSimulator.invoice.CreateInvoicePaymentRequest.total:type_name -> paymentSimulator.common.Money
+	4, // 5: paymentSimulator.invoice.CreateInvoicePaymentRequest.tax_total:type_name -> paymentSimulator.common.Money
+	4, // 6: paymentSimulator.invoice.CreateInvoicePaymentRequest.discount_total:type_name -> paymentSimulator.common.Money
+	4, // 7: paymentSimulator.invoice.BookingSnapshot.value_per_night:type_name -> paymentSimulator.common.Money
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_paymentSimulator_invoice_createInvoice_proto_init() }

@@ -8,18 +8,18 @@ import "paymentSimulator/common/money.proto";
 import "paymentSimulator/common/paymentMethod.proto";
 
 message PaymentRequest{
-  string payment_request_id = 1;
-  string invoice_number = 2;
+  string invoice_number = 1;
+  string description = 2;
 
-  paymentSimulator.common.Money total = 4;
+  paymentSimulator.common.Money total = 3;
 
-  google.protobuf.Timestamp issued_at = 5;
-  google.protobuf.Timestamp expires_at = 6;
+  google.protobuf.Timestamp issued_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
 
-  BookingSummary booking = 7;
-  PayerSummary payer = 8;
+  BookingSummary booking = 6;
+  PayerSummary payer = 7;
 
-  repeated PaymentOption options = 9;
+  repeated PaymentOption options = 8;
 }
 
 message PaymentOption {

@@ -10,13 +10,13 @@ import (
 
 type MqProducer interface {
 	DeclareExchange(config config.ExchangeConfig) error
-	Publish(ctx context.Context, message proto.Message, config config.PublishConfig) error
+	Publish(ctx context.Context, message proto.Message, routingKey string) error
 	CloseChannel() error
 }
 
 type MqConsumer interface {
 	DeclareQueue(config config.QueueConfig) error
 	BindQueue(config config.BindingConfig) error
-	Consume(ctx context.Context, config config.ConsumeConfig) (<-chan amqp.Delivery, error)
+	Consume(ctx context.Context) (<-chan amqp.Delivery, error)
 	CloseChannel() error
 }

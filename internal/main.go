@@ -14,7 +14,7 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/infra/logging"
 	"github.com/Kenji-Uema/paymentSimulator/internal/infra/mq"
 	"github.com/Kenji-Uema/paymentSimulator/internal/infra/telemetry"
-	http "github.com/Kenji-Uema/paymentSimulator/internal/transport"
+	"github.com/Kenji-Uema/paymentSimulator/internal/transport"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
@@ -27,32 +27,32 @@ func main() {
 	exitOnError(ctx, "load configs", err)
 
 	slog.SetDefault(logging.NewLogger(configs.LogConfig))
-	slog.InfoContext(ctx, "Clock Emulation Starting")
+	slog.InfoContext(ctx, "Payment Simulator Starting")
 
 	shutdownTelemetry, err := telemetry.Init(ctx, configs.TelemetryConfig, configs.AppConfig)
 	exitOnError(ctx, "failed to setup telemetry", err)
 
-	mongoDb, err := db.NewMongoDbFromConfig(ctx, configs.MongoConfig)
+	mongoDb, err := db.NewMongoDb(ctx, configs.MongoConfig)
 	exitOnError(ctx, "failed to connect to MongoDB", err)
 
 	invoiceRepo := db.NewInvoiceRepo(mongoDb.Database)
 	receiptRepo := db.NewReceiptRepo(mongoDb.Database)
 
-	rabbitMqClient, err := mq.NewRabbitMqConnection(configs.RabbitMqConfig)
+	rabbitMqClient, err := mq.NewRabbitMqConnection(ctx, configs.RabbitMqConfig)
 	exitOnError(ctx, "failed to connect to RabbitMQ", err)
 
-	paymentProducer, err := mq.NewRabbitmqProducer(rabbitMqClient)
+	paymentProducer, err := mq.NewRabbitmqProducer(rabbitMqClient, configs.PaymentPublisherConfig.Publish)
 	exitOnError(ctx, "failed to create payment producer", err)
-	err = paymentProducer.DeclareExchange(config.ExchangeConfig{})
+	err = paymentProducer.DeclareExchange(configs.PaymentPublisherConfig.Exchange)
 	exitOnError(ctx, "failed to declare exchange", err)
 
-	invoiceConsumer, err := mq.NewRabbitmqConsumer(rabbitMqClient)
+	invoiceConsumer, err := mq.NewRabbitmqConsumer(rabbitMqClient, configs.InvoiceConsumerConfig.Consume)
 	exitOnError(ctx, "failed to create invoice consumer", err)
-	err = invoiceConsumer.DeclareQueue(config.QueueConfig{})
+	err = invoiceConsumer.DeclareQueue(configs.InvoiceConsumerConfig.Queue)
 	exitOnError(ctx, "failed to declare queue", err)
 
-	paymentMakingCardService := app.NewPaymentMakingCardServer(config.PaymentMakingCardConfig{}, invoiceRepo, receiptRepo, paymentProducer)
-	invoiceService := app.NewInvoiceService(invoiceRepo, invoiceConsumer, paymentProducer)
+	paymentMakingCardService := app.NewPaymentMakingCardServer(configs.PaymentMakingCardConfig, invoiceRepo, receiptRepo, paymentProducer)
+	invoiceService := app.NewInvoiceService(invoiceRepo, invoiceConsumer, paymentProducer, configs.PaymentMakingCardConfig)
 
 	invoiceService.StartInvoiceProcessing(ctx)
 

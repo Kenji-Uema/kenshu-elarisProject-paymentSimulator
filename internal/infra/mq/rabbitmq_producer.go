@@ -18,14 +18,16 @@ import (
 
 type rabbitmqProducer struct {
 	*RabbitMqConnection
-	channel      *amqp.Channel
-	exchangeName string
-	exchangeKind string
+	channel       *amqp.Channel
+	exchangeName  string
+	exchangeKind  string
+	publishConfig config.PublishConfig
 }
 
-func NewRabbitmqProducer(rabbitmqConnection *RabbitMqConnection) (port.MqProducer, error) {
+func NewRabbitmqProducer(rabbitmqConnection *RabbitMqConnection, publishConfig config.PublishConfig) (port.MqProducer, error) {
 	paymentProducer := rabbitmqProducer{
 		RabbitMqConnection: rabbitmqConnection,
+		publishConfig:      publishConfig,
 	}
 
 	channel, err := rabbitmqConnection.Channel()
@@ -39,6 +41,7 @@ func NewRabbitmqProducer(rabbitmqConnection *RabbitMqConnection) (port.MqProduce
 
 func (p *rabbitmqProducer) DeclareExchange(config config.ExchangeConfig) error {
 	p.exchangeName = config.Name
+	p.exchangeKind = config.Kind
 	if config.Kind == "" {
 		slog.Warn("exchange kind not specified, defaulting to 'direct'")
 		p.exchangeKind = "direct"
@@ -62,7 +65,7 @@ func (p *rabbitmqProducer) DeclareExchange(config config.ExchangeConfig) error {
 	return nil
 }
 
-func (p *rabbitmqProducer) Publish(ctx context.Context, message proto.Message, config config.PublishConfig) error {
+func (p *rabbitmqProducer) Publish(ctx context.Context, message proto.Message, routingKey string) error {
 	if p.channel == nil || p.channel.IsClosed() {
 		ch, err := p.Channel()
 		if err != nil {
@@ -88,9 +91,9 @@ func (p *rabbitmqProducer) Publish(ctx context.Context, message proto.Message, c
 	if err := p.channel.PublishWithContext(
 		ctx,
 		p.exchangeName,
-		config.RoutingKey,
-		config.Mandatory,
-		config.Immediate,
+		routingKey,
+		p.publishConfig.Mandatory,
+		p.publishConfig.Immediate,
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         payload,

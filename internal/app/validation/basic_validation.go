@@ -56,3 +56,14 @@ func (v *Validator) PositiveValue(field string, value any) *Validator {
 
 	return v
 }
+
+func (v *Validator) NotNil(field string, value any) *Validator {
+	v.steps = append(v.steps, func() error {
+		if value == nil {
+			return &validationErrors.ErrValidationConstrain{Field: field, Message: "must not be nil"}
+		}
+		return nil
+	})
+
+	return v
+}

@@ -2,24 +2,17 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
-	"time"
 
+	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
-	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"go.mongodb.org/mongo-driver/v2/bson"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
-)
-
-const (
-	invoiceConsumerTag        = "invoice-service"
-	paymentRequestRoutingKey  = "payment.request.create"
-	paymentRequestExpiryDelta = 24 * time.Hour
 )
 
 type InvoiceService interface {
@@ -27,28 +20,26 @@ type InvoiceService interface {
 }
 
 type invoiceService struct {
-	invoiceRepo     port.InvoiceRepo
-	invoiceConsumer port.MqConsumer
-	paymentProducer port.MqProducer
+	invoiceRepo         port.InvoiceRepo
+	invoiceConsumer     port.MqConsumer
+	paymentProducer     port.MqProducer
+	paymentMakingConfig config.PaymentMakingCardConfig
 }
 
-func NewInvoiceService(invoiceRepo port.InvoiceRepo, invoiceConsumer port.MqConsumer, paymentProducer port.MqProducer) InvoiceService {
+func NewInvoiceService(invoiceRepo port.InvoiceRepo,
+	invoiceConsumer port.MqConsumer, paymentProducer port.MqProducer,
+	paymentMakingConfig config.PaymentMakingCardConfig) InvoiceService {
+
 	return &invoiceService{
-		invoiceRepo:     invoiceRepo,
-		invoiceConsumer: invoiceConsumer,
-		paymentProducer: paymentProducer,
+		invoiceRepo:         invoiceRepo,
+		invoiceConsumer:     invoiceConsumer,
+		paymentProducer:     paymentProducer,
+		paymentMakingConfig: paymentMakingConfig,
 	}
 }
 
 func (s invoiceService) StartInvoiceProcessing(ctx context.Context) {
-	deliveries, err := s.invoiceConsumer.Consume(ctx, config.ConsumeConfig{
-		Consumer:  invoiceConsumerTag,
-		AutoAck:   false,
-		Exclusive: false,
-		NoLocal:   false,
-		NoWait:    false,
-		Args:      nil,
-	})
+	deliveries, err := s.invoiceConsumer.Consume(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "consume invoice queue", "error", err)
 		return
@@ -68,48 +59,10 @@ func (s invoiceService) processInvoiceDelivery(ctx context.Context, delivery amq
 		return err
 	}
 
-	bookingID, err := bson.ObjectIDFromHex(createInvoiceRequest.GetBookingId())
+	invoice, err := document.NewInvoiceFromProtoMessage(&createInvoiceRequest)
 	if err != nil {
-		_ = delivery.Nack(false, false)
+		_ = delivery.Nack(false, true)
 		return err
-	}
-
-	payerID, err := bson.ObjectIDFromHex(createInvoiceRequest.GetPayerId())
-	if err != nil {
-		_ = delivery.Nack(false, false)
-		return err
-	}
-
-	invoice := document.Invoice{
-		BookingId: bookingID,
-		PayerId:   payerID,
-		Payer: document.Payer{
-			Name:           createInvoiceRequest.GetPayer().GetName(),
-			Email:          createInvoiceRequest.GetPayer().GetEmail(),
-			DocumentNumber: createInvoiceRequest.GetPayer().GetDocumentNumber(),
-			BillingAddress: createInvoiceRequest.GetPayer().GetBillingAddress(),
-		},
-		Booking: document.BookingSnapshot{
-			CottageName:    createInvoiceRequest.GetBooking().GetCottageName(),
-			Nights:         createInvoiceRequest.GetBooking().GetNights(),
-			NumberOfGuests: createInvoiceRequest.GetBooking().GetNumberOfGuests(),
-			ValuePerNight: document.Money{
-				Amount:   createInvoiceRequest.GetBooking().GetValuePerNight().GetAmount(),
-				Currency: createInvoiceRequest.GetBooking().GetValuePerNight().GetCurrency(),
-			},
-		},
-		Total: document.Money{
-			Amount:   createInvoiceRequest.GetTotal().GetAmount(),
-			Currency: createInvoiceRequest.GetTotal().GetCurrency(),
-		},
-		TaxTotal: document.Money{
-			Amount:   createInvoiceRequest.GetTaxTotal().GetAmount(),
-			Currency: createInvoiceRequest.GetTaxTotal().GetCurrency(),
-		},
-		DiscountTotal: document.Money{
-			Amount:   createInvoiceRequest.GetDiscountTotal().GetAmount(),
-			Currency: createInvoiceRequest.GetDiscountTotal().GetCurrency(),
-		},
 	}
 
 	invoiceID, err := s.invoiceRepo.Add(ctx, invoice)
@@ -117,40 +70,84 @@ func (s invoiceService) processInvoiceDelivery(ctx context.Context, delivery amq
 		_ = delivery.Nack(false, true)
 		return err
 	}
+	slog.InfoContext(ctx, "invoice created", "invoice_id", invoiceID)
 
 	paymentRequest := &dto.PaymentRequest{
-		PaymentRequestId: uuid.NewString(),
-		InvoiceNumber:    invoiceID.Hex(),
+		InvoiceNumber: invoice.InvoiceNumber,
 		Total: &dto.Money{
-			Amount:   createInvoiceRequest.GetTotal().GetAmount(),
-			Currency: createInvoiceRequest.GetTotal().GetCurrency(),
+			Amount:   invoice.Total.Amount,
+			Currency: invoice.Total.Currency,
 		},
-		IssuedAt:  timestamppb.Now(),
-		ExpiresAt: timestamppb.New(time.Now().Add(paymentRequestExpiryDelta)),
+		IssuedAt:  timestamppb.New(invoice.IssuedAt),
+		ExpiresAt: timestamppb.New(invoice.DueAt),
 		Booking: &dto.BookingSummary{
-			CottageName:    createInvoiceRequest.GetBooking().GetCottageName(),
-			Nights:         createInvoiceRequest.GetBooking().GetNights(),
-			NumberOfGuests: createInvoiceRequest.GetBooking().GetNumberOfGuests(),
+			CottageName:    invoice.Booking.CottageName,
+			Nights:         invoice.Booking.Nights,
+			NumberOfGuests: invoice.Booking.NumberOfGuests,
 		},
 		Payer: &dto.PayerSummary{
-			Name:  createInvoiceRequest.GetPayer().GetName(),
-			Email: createInvoiceRequest.GetPayer().GetEmail(),
+			Name:  invoice.Payer.Name,
+			Email: invoice.Payer.Email,
 		},
 		Options: []*dto.PaymentOption{
 			{
-				Method: dto.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD,
+				Method:       dto.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD,
+				PaymentUrl:   fmt.Sprintf("%s/v1/payments/invoice/%s", s.paymentMakingConfig.Host, invoice.InvoiceNumber),
+				Instructions: "Please use the following url to pay for your booking",
 			},
 		},
 	}
 
-	if err := s.paymentProducer.Publish(ctx, paymentRequest, config.PublishConfig{
-		RoutingKey: paymentRequestRoutingKey,
-		Mandatory:  false,
-		Immediate:  false,
-	}); err != nil {
+	if err := validatePaymentRequest(paymentRequest); err != nil {
+		_ = delivery.Nack(false, false)
+		return err
+	}
+
+	if err := s.paymentProducer.Publish(ctx, paymentRequest, fmt.Sprintf("payment.%s.request", invoice.PayerId)); err != nil {
 		_ = delivery.Nack(false, true)
 		return err
 	}
 
 	return delivery.Ack(false)
+}
+
+func validatePaymentRequest(paymentRequest *dto.PaymentRequest) error {
+	issuedAt := paymentRequest.GetIssuedAt()
+	expiresAt := paymentRequest.GetExpiresAt()
+	booking := paymentRequest.GetBooking()
+	payer := paymentRequest.GetPayer()
+	total := paymentRequest.GetTotal()
+	options := paymentRequest.GetOptions()
+
+	validator := validation.New().
+		NotNil("paymentRequest", paymentRequest).
+		NotBlank("invoice_number", paymentRequest.GetInvoiceNumber()).
+		NotNil("total", total).
+		PositiveValue("total.amount", total.GetAmount()).
+		NotBlank("total.currency", total.GetCurrency()).
+		NotNil("issued_at", issuedAt).
+		NotNil("expires_at", expiresAt).
+		NotNil("booking", booking).
+		NotBlank("booking.cottage_name", booking.GetCottageName()).
+		PositiveValue("booking.nights", booking.GetNights()).
+		PositiveValue("booking.number_of_guests", booking.GetNumberOfGuests()).
+		NotNil("payer", payer).
+		NotBlank("payer.name", payer.GetName()).
+		NotBlank("payer.email", payer.GetEmail()).
+		PositiveValue("options", len(options))
+
+	for idx, option := range options {
+		field := fmt.Sprintf("options[%d]", idx)
+		validator.
+			NotNil(field, option).
+			PositiveValue(field+".method", int32(option.GetMethod())).
+			NotBlank(field+".payment_url", option.GetPaymentUrl()).
+			NotBlank(field+".instructions", option.GetInstructions())
+	}
+
+	if issuedAt != nil && expiresAt != nil {
+		validator.ValidPrecedence(issuedAt.AsTime(), expiresAt.AsTime())
+	}
+
+	return validator.Validate()
 }

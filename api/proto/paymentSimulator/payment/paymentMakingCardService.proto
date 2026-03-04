@@ -9,8 +9,8 @@ import "paymentSimulator/payment/paymentMakingCard.proto";
 service PaymentMakingCardService {
   rpc PayWithCard(PayWithCardRequest) returns (PayWithCardResponse) {
     option (google.api.http) = {
-      post: "/v1/payments/card:pay"
-      body: "*"
+      post: "/v1/payments/invoice/{invoice_id}"
+      body: "card"
     };
   }
 }
