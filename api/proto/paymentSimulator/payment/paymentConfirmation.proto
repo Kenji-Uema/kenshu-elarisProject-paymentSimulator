@@ -10,15 +10,12 @@ import "paymentSimulator/common/cardSummary.proto";
 
 message PaymentConfirmation {
   string id = 1;
-  string payment_intent_id = 2;
-  string booking_id = 4;
 
-  paymentSimulator.common.Money amount = 5;
+  string booking_id = 2;
+  string payer_id = 3;
 
-  paymentSimulator.common.PaymentMethod method = 6;
+  string invoice_number = 4;
+  string receipt_number = 5;
 
-  string receipt_id = 7;
-  paymentSimulator.common.CardSummary card = 8;
-
-  google.protobuf.Timestamp confirmed_at = 10;
+  google.protobuf.Timestamp confirmed_at = 6;
 }

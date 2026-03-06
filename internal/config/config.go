@@ -15,6 +15,7 @@ func (s Secret) String() string {
 type Configs struct {
 	AppConfig
 	ServerConfig
+	ClockEmuConfig
 	MongoConfig
 	RabbitMqConfig
 	PaymentPublisherConfig
@@ -36,6 +37,11 @@ type ServerConfig struct {
 	ReadTimeoutInSeconds       int    `env:"READ_TIMEOUT_IN_SECONDS,required" envDefault:"10"`
 	WriteTimeoutInSeconds      int    `env:"WRITE_TIMEOUT_IN_SECONDS,required" envDefault:"15"`
 	IdleTimeoutInSeconds       int    `env:"IDLE_TIMEOUT_IN_SECONDS,required" envDefault:"60"`
+}
+
+type ClockEmuConfig struct {
+	ClockEmuGrpcUrl  string `env:"CLOCK_EMU_GRPC_URL,required"`
+	ClockEmuGrpcPort int    `env:"CLOCK_EMU_GRPC_PORT,required"`
 }
 
 type PaymentMakingCardConfig struct {

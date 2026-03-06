@@ -15,6 +15,7 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/infra/mq"
 	"github.com/Kenji-Uema/paymentSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport"
+	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
@@ -50,9 +51,11 @@ func main() {
 	exitOnError(ctx, "failed to create invoice consumer", err)
 	err = invoiceConsumer.DeclareQueue(configs.InvoiceConsumerConfig.Queue)
 	exitOnError(ctx, "failed to declare queue", err)
+	clockEmu, err := grpc.NewClockEmu(configs.ClockEmuConfig)
+	exitOnError(ctx, "failed to create clock emu", err)
 
-	paymentMakingCardService := app.NewPaymentMakingCardServer(configs.PaymentMakingCardConfig, invoiceRepo, receiptRepo, paymentProducer)
-	invoiceService := app.NewInvoiceService(invoiceRepo, invoiceConsumer, paymentProducer, configs.PaymentMakingCardConfig)
+	paymentMakingCardService := app.NewPaymentMakingCardServer(configs.PaymentMakingCardConfig, clockEmu, invoiceRepo, receiptRepo, paymentProducer)
+	invoiceService := app.NewInvoiceService(invoiceRepo, clockEmu, invoiceConsumer, paymentProducer, configs.PaymentMakingCardConfig)
 
 	invoiceService.StartInvoiceProcessing(ctx)
 
@@ -89,6 +92,10 @@ func main() {
 
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		slog.ErrorContext(shutdownCtx, "server shutdown failed", "err", err)
+	}
+
+	if err := clockEmu.Close(); err != nil {
+		slog.ErrorContext(ctx, "close clock emu", "error", err)
 	}
 }
 

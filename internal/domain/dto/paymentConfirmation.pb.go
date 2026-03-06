@@ -23,17 +23,15 @@ const (
 )
 
 type PaymentConfirmation struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	PaymentIntentId string                 `protobuf:"bytes,2,opt,name=payment_intent_id,json=paymentIntentId,proto3" json:"payment_intent_id,omitempty"`
-	BookingId       string                 `protobuf:"bytes,4,opt,name=booking_id,json=bookingId,proto3" json:"booking_id,omitempty"`
-	Amount          *Money                 `protobuf:"bytes,5,opt,name=amount,proto3" json:"amount,omitempty"`
-	Method          PaymentMethod          `protobuf:"varint,6,opt,name=method,proto3,enum=paymentSimulator.common.PaymentMethod" json:"method,omitempty"`
-	ReceiptId       string                 `protobuf:"bytes,7,opt,name=receipt_id,json=receiptId,proto3" json:"receipt_id,omitempty"`
-	Card            *CardSummary           `protobuf:"bytes,8,opt,name=card,proto3" json:"card,omitempty"`
-	ConfirmedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=confirmed_at,json=confirmedAt,proto3" json:"confirmed_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	BookingId     string                 `protobuf:"bytes,2,opt,name=booking_id,json=bookingId,proto3" json:"booking_id,omitempty"`
+	PayerId       string                 `protobuf:"bytes,3,opt,name=payer_id,json=payerId,proto3" json:"payer_id,omitempty"`
+	InvoiceNumber string                 `protobuf:"bytes,4,opt,name=invoice_number,json=invoiceNumber,proto3" json:"invoice_number,omitempty"`
+	ReceiptNumber string                 `protobuf:"bytes,5,opt,name=receipt_number,json=receiptNumber,proto3" json:"receipt_number,omitempty"`
+	ConfirmedAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=confirmed_at,json=confirmedAt,proto3" json:"confirmed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PaymentConfirmation) Reset() {
@@ -73,13 +71,6 @@ func (x *PaymentConfirmation) GetId() string {
 	return ""
 }
 
-func (x *PaymentConfirmation) GetPaymentIntentId() string {
-	if x != nil {
-		return x.PaymentIntentId
-	}
-	return ""
-}
-
 func (x *PaymentConfirmation) GetBookingId() string {
 	if x != nil {
 		return x.BookingId
@@ -87,32 +78,25 @@ func (x *PaymentConfirmation) GetBookingId() string {
 	return ""
 }
 
-func (x *PaymentConfirmation) GetAmount() *Money {
+func (x *PaymentConfirmation) GetPayerId() string {
 	if x != nil {
-		return x.Amount
-	}
-	return nil
-}
-
-func (x *PaymentConfirmation) GetMethod() PaymentMethod {
-	if x != nil {
-		return x.Method
-	}
-	return PaymentMethod_PAYMENT_METHOD_UNSPECIFIED
-}
-
-func (x *PaymentConfirmation) GetReceiptId() string {
-	if x != nil {
-		return x.ReceiptId
+		return x.PayerId
 	}
 	return ""
 }
 
-func (x *PaymentConfirmation) GetCard() *CardSummary {
+func (x *PaymentConfirmation) GetInvoiceNumber() string {
 	if x != nil {
-		return x.Card
+		return x.InvoiceNumber
 	}
-	return nil
+	return ""
+}
+
+func (x *PaymentConfirmation) GetReceiptNumber() string {
+	if x != nil {
+		return x.ReceiptNumber
+	}
+	return ""
 }
 
 func (x *PaymentConfirmation) GetConfirmedAt() *timestamppb.Timestamp {
@@ -126,19 +110,15 @@ var File_paymentSimulator_payment_paymentConfirmation_proto protoreflect.FileDes
 
 const file_paymentSimulator_payment_paymentConfirmation_proto_rawDesc = "" +
 	"\n" +
-	"2paymentSimulator/payment/paymentConfirmation.proto\x12\x1bpaymentSimulator.payment.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#paymentSimulator/common/money.proto\x1a+paymentSimulator/common/paymentMethod.proto\x1a)paymentSimulator/common/cardSummary.proto\"\x80\x03\n" +
+	"2paymentSimulator/payment/paymentConfirmation.proto\x12\x1bpaymentSimulator.payment.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#paymentSimulator/common/money.proto\x1a+paymentSimulator/common/paymentMethod.proto\x1a)paymentSimulator/common/cardSummary.proto\"\xec\x01\n" +
 	"\x13PaymentConfirmation\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
-	"\x11payment_intent_id\x18\x02 \x01(\tR\x0fpaymentIntentId\x12\x1d\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
-	"booking_id\x18\x04 \x01(\tR\tbookingId\x126\n" +
-	"\x06amount\x18\x05 \x01(\v2\x1e.paymentSimulator.common.MoneyR\x06amount\x12>\n" +
-	"\x06method\x18\x06 \x01(\x0e2&.paymentSimulator.common.PaymentMethodR\x06method\x12\x1d\n" +
-	"\n" +
-	"receipt_id\x18\a \x01(\tR\treceiptId\x128\n" +
-	"\x04card\x18\b \x01(\v2$.paymentSimulator.common.CardSummaryR\x04card\x12=\n" +
-	"\fconfirmed_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\vconfirmedAtB@Z>github.com/Kenji-Uema/paymentSimulator/internal/domain/dto;dtob\x06proto3"
+	"booking_id\x18\x02 \x01(\tR\tbookingId\x12\x19\n" +
+	"\bpayer_id\x18\x03 \x01(\tR\apayerId\x12%\n" +
+	"\x0einvoice_number\x18\x04 \x01(\tR\rinvoiceNumber\x12%\n" +
+	"\x0ereceipt_number\x18\x05 \x01(\tR\rreceiptNumber\x12=\n" +
+	"\fconfirmed_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vconfirmedAtB@Z>github.com/Kenji-Uema/paymentSimulator/internal/domain/dto;dtob\x06proto3"
 
 var (
 	file_paymentSimulator_payment_paymentConfirmation_proto_rawDescOnce sync.Once
@@ -155,21 +135,15 @@ func file_paymentSimulator_payment_paymentConfirmation_proto_rawDescGZIP() []byt
 var file_paymentSimulator_payment_paymentConfirmation_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_paymentSimulator_payment_paymentConfirmation_proto_goTypes = []any{
 	(*PaymentConfirmation)(nil),   // 0: paymentSimulator.payment.v1.PaymentConfirmation
-	(*Money)(nil),                 // 1: paymentSimulator.common.Money
-	(PaymentMethod)(0),            // 2: paymentSimulator.common.PaymentMethod
-	(*CardSummary)(nil),           // 3: paymentSimulator.common.CardSummary
-	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
+	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
 }
 var file_paymentSimulator_payment_paymentConfirmation_proto_depIdxs = []int32{
-	1, // 0: paymentSimulator.payment.v1.PaymentConfirmation.amount:type_name -> paymentSimulator.common.Money
-	2, // 1: paymentSimulator.payment.v1.PaymentConfirmation.method:type_name -> paymentSimulator.common.PaymentMethod
-	3, // 2: paymentSimulator.payment.v1.PaymentConfirmation.card:type_name -> paymentSimulator.common.CardSummary
-	4, // 3: paymentSimulator.payment.v1.PaymentConfirmation.confirmed_at:type_name -> google.protobuf.Timestamp
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	1, // 0: paymentSimulator.payment.v1.PaymentConfirmation.confirmed_at:type_name -> google.protobuf.Timestamp
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_paymentSimulator_payment_paymentConfirmation_proto_init() }

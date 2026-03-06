@@ -40,12 +40,21 @@ func request_PaymentMakingCardService_PayWithCard_0(ctx context.Context, marshal
 	var (
 		protoReq dto.PayWithCardRequest
 		metadata runtime.ServerMetadata
+		err      error
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Card); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["invoice_number"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "invoice_number")
+	}
+	protoReq.InvoiceNumber, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "invoice_number", err)
 	}
 	msg, err := client.PayWithCard(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
@@ -55,9 +64,18 @@ func local_request_PaymentMakingCardService_PayWithCard_0(ctx context.Context, m
 	var (
 		protoReq dto.PayWithCardRequest
 		metadata runtime.ServerMetadata
+		err      error
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Card); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	val, ok := pathParams["invoice_number"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "invoice_number")
+	}
+	protoReq.InvoiceNumber, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "invoice_number", err)
 	}
 	msg, err := server.PayWithCard(ctx, &protoReq)
 	return msg, metadata, err
@@ -75,7 +93,7 @@ func RegisterPaymentMakingCardServiceHandlerServer(ctx context.Context, mux *run
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/paymentSimulator.payment.v1.PaymentMakingCardService/PayWithCard", runtime.WithHTTPPathPattern("/v1/payments/card:pay"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/paymentSimulator.payment.v1.PaymentMakingCardService/PayWithCard", runtime.WithHTTPPathPattern("/v1/payments/invoice/{invoice_number}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -133,7 +151,7 @@ func RegisterPaymentMakingCardServiceHandlerClient(ctx context.Context, mux *run
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/paymentSimulator.payment.v1.PaymentMakingCardService/PayWithCard", runtime.WithHTTPPathPattern("/v1/payments/card:pay"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/paymentSimulator.payment.v1.PaymentMakingCardService/PayWithCard", runtime.WithHTTPPathPattern("/v1/payments/invoice/{invoice_number}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -150,7 +168,7 @@ func RegisterPaymentMakingCardServiceHandlerClient(ctx context.Context, mux *run
 }
 
 var (
-	pattern_PaymentMakingCardService_PayWithCard_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "payments", "card"}, "pay"))
+	pattern_PaymentMakingCardService_PayWithCard_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "payments", "invoice", "invoice_number"}, ""))
 )
 
 var (

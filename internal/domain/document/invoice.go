@@ -1,14 +1,10 @@
 package document
 
 import (
-	"crypto/rand"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
@@ -58,7 +54,7 @@ type BookingSnapshot struct {
 	ValuePerNight  Money  `bson:"value_per_night"`
 }
 
-func NewInvoiceFromProtoMessage(invoiceProto *dto.CreateInvoicePaymentRequest) (Invoice, error) {
+func NewInvoiceFromProtoMessage(invoiceProto *dto.CreateInvoicePaymentRequest, invoiceNumber string, now time.Time) (Invoice, error) {
 	if err := validation.New().NotNil("invoiceProto", invoiceProto).Validate(); err != nil {
 		return Invoice{}, err
 	}
@@ -103,12 +99,6 @@ func NewInvoiceFromProtoMessage(invoiceProto *dto.CreateInvoicePaymentRequest) (
 		return Invoice{}, err
 	}
 
-	now := time.Now()
-	invoiceNumber, err := generateInvoiceNumber(now)
-	if err != nil {
-		return Invoice{}, err
-	}
-
 	return Invoice{
 		InvoiceNumber: invoiceNumber,
 		Status:        defaultInvoiceStatus,
@@ -147,27 +137,4 @@ func NewInvoiceFromProtoMessage(invoiceProto *dto.CreateInvoicePaymentRequest) (
 		CreatedAt: now,
 		UpdatedAt: now,
 	}, nil
-}
-
-func generateInvoiceNumber(now time.Time) (string, error) {
-	const invoiceNumberSuffixLength = 6
-
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return "", err
-	}
-
-	source := strings.ReplaceAll(id.String(), "-", "")
-
-	random := make([]byte, invoiceNumberSuffixLength)
-	if _, err := rand.Read(random); err != nil {
-		return "", err
-	}
-
-	suffix := make([]byte, invoiceNumberSuffixLength)
-	for i := 0; i < invoiceNumberSuffixLength; i++ {
-		suffix[i] = source[int(random[i])%len(source)]
-	}
-
-	return fmt.Sprintf("INV-%s-%s", now.UTC().Format("20060102"), string(suffix)), nil
 }

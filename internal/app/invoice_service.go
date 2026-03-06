@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/Kenji-Uema/paymentSimulator/internal/app/util"
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
+	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -20,17 +22,19 @@ type InvoiceService interface {
 }
 
 type invoiceService struct {
+	clock               *grpc.Clock
 	invoiceRepo         port.InvoiceRepo
 	invoiceConsumer     port.MqConsumer
 	paymentProducer     port.MqProducer
 	paymentMakingConfig config.PaymentMakingCardConfig
 }
 
-func NewInvoiceService(invoiceRepo port.InvoiceRepo,
+func NewInvoiceService(invoiceRepo port.InvoiceRepo, clock *grpc.Clock,
 	invoiceConsumer port.MqConsumer, paymentProducer port.MqProducer,
 	paymentMakingConfig config.PaymentMakingCardConfig) InvoiceService {
 
 	return &invoiceService{
+		clock:               clock,
 		invoiceRepo:         invoiceRepo,
 		invoiceConsumer:     invoiceConsumer,
 		paymentProducer:     paymentProducer,
@@ -38,7 +42,7 @@ func NewInvoiceService(invoiceRepo port.InvoiceRepo,
 	}
 }
 
-func (s invoiceService) StartInvoiceProcessing(ctx context.Context) {
+func (s *invoiceService) StartInvoiceProcessing(ctx context.Context) {
 	deliveries, err := s.invoiceConsumer.Consume(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "consume invoice queue", "error", err)
@@ -52,14 +56,23 @@ func (s invoiceService) StartInvoiceProcessing(ctx context.Context) {
 	}
 }
 
-func (s invoiceService) processInvoiceDelivery(ctx context.Context, delivery amqp.Delivery) error {
+func (s *invoiceService) processInvoiceDelivery(ctx context.Context, delivery amqp.Delivery) error {
 	var createInvoiceRequest dto.CreateInvoicePaymentRequest
 	if err := protojson.Unmarshal(delivery.Body, &createInvoiceRequest); err != nil {
 		_ = delivery.Nack(false, false)
 		return err
 	}
 
-	invoice, err := document.NewInvoiceFromProtoMessage(&createInvoiceRequest)
+	now, err := s.clock.Now(ctx)
+	if err != nil {
+		return err
+	}
+
+	invoiceNumber, err := util.GenerateHumanFriendlyId("INV", *now)
+	if err != nil {
+		return err
+	}
+	invoice, err := document.NewInvoiceFromProtoMessage(&createInvoiceRequest, invoiceNumber, *now)
 	if err != nil {
 		_ = delivery.Nack(false, true)
 		return err

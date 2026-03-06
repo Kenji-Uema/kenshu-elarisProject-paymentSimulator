@@ -8,8 +8,8 @@ import (
 )
 
 type InvoiceRepo interface {
-	Get(ctx context.Context, id bson.ObjectID) (document.Invoice, error)
-	Add(ctx context.Context, booking document.Invoice) (bson.ObjectID, error)
+	Get(ctx context.Context, invoiceNumber string) (document.Invoice, error)
+	Add(ctx context.Context, invoice document.Invoice) (bson.ObjectID, error)
 }
 
 type ReceiptRepo interface {

@@ -7,13 +7,15 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/Kenji-Uema/paymentSimulator/internal/app/util"
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
-	paymentgrpc "github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc"
+	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment"
+	"github.com/google/uuid"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,112 +23,120 @@ import (
 )
 
 type paymentMakingCardService struct {
-	paymentgrpc.PaymentMakingCardServiceServer
+	payment.PaymentMakingCardServiceServer
 	config          config.PaymentMakingCardConfig
+	clock           *grpc.Clock
 	invoiceRepo     port.InvoiceRepo
 	receiptRepo     port.ReceiptRepo
 	paymentProducer port.MqProducer
 }
 
-func NewPaymentMakingCardServer(config config.PaymentMakingCardConfig,
-	invoiceRepo port.InvoiceRepo, receiptRepo port.ReceiptRepo, paymentProducer port.MqProducer) paymentgrpc.PaymentMakingCardServiceServer {
+func NewPaymentMakingCardServer(config config.PaymentMakingCardConfig, clock *grpc.Clock,
+	invoiceRepo port.InvoiceRepo, receiptRepo port.ReceiptRepo, producer port.MqProducer) payment.PaymentMakingCardServiceServer {
 	return &paymentMakingCardService{
 		config:          config,
+		clock:           clock,
 		invoiceRepo:     invoiceRepo,
 		receiptRepo:     receiptRepo,
-		paymentProducer: paymentProducer,
+		paymentProducer: producer,
 	}
 }
 
-func (s *paymentMakingCardService) PayWithCard(ctx context.Context,
-	req *dto.PayWithCardRequest) (*dto.PayWithCardResponse, error) {
-
+func (s *paymentMakingCardService) PayWithCard(ctx context.Context, req *dto.PayWithCardRequest) (*dto.PayWithCardResponse, error) {
 	slog.DebugContext(ctx, "card information")
 
 	if err := validation.New().
+		NotBlank("invoice_number", req.InvoiceNumber).
 		NotBlank("card.number", req.Card.Number).
 		NotZeroValue("card.exp_month", req.Card.ExpMonth).
 		NotZeroValue("card.exp_year", req.Card.ExpYear).
 		NotBlank("card.cvv", req.Card.Cvv).
-		NotBlank("card.holder_name", req.Card.HolderName).
-		NotBlank("invoice_id", req.InvoiceId).
-		Validate(); err != nil {
+		NotBlank("card.holder_name", req.Card.HolderName).Validate(); err != nil {
+
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	invoiceID, err := bson.ObjectIDFromHex(req.GetInvoiceId())
+	now, err := s.clock.Now(ctx)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid invoice_id: %v", err))
-	}
-
-	invoice, err := s.invoiceRepo.Get(ctx, invoiceID)
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("load invoice: %v", err))
-	}
-
-	n := req.GetCard().GetNumber()
-	last4 := n[len(n)-4:]
-	paymentIntentID := bson.NewObjectID()
-	receiptBusinessID := bson.NewObjectID()
-
-	resp := dto.PayWithCardResponse{
-		PaymentIntentId: paymentIntentID.Hex(),
-		Status:          dto.PaymentStatus_PAYMENT_STATUS_SUCCEEDED,
-		ReceiptId:       receiptBusinessID.Hex(),
-		ProcessedAt:     timestamppb.Now(),
-		Card: &dto.CardSummary{
-			Brand: req.Card.Brand,
-			Last4: last4,
-		},
+		return nil, err
 	}
 
 	if rand.Int() < s.config.FailChance {
-		resp.Status = dto.PaymentStatus_PAYMENT_STATUS_FAILED
-
-		return &resp, nil
+		return s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_FAILED, *now)
+	}
+	resp, err := s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_SUCCEEDED, *now)
+	if err != nil {
+		return nil, err
 	}
 
-	confirmedAt := time.Now()
-	receipt := document.Receipt{
-		PaymentIntentId: paymentIntentID,
-		BookingId:       invoice.BookingId,
-		Amount: document.Money{
-			Amount:   invoice.Total.Amount,
-			Currency: invoice.Total.Currency,
-		},
-		Method:    dto.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD.String(),
-		ReceiptId: receiptBusinessID,
-		Card: document.CardSummary{
-			Brand: req.GetCard().GetBrand(),
-			Last4: last4,
-		},
-		ConfirmedAt: &confirmedAt,
+	go func() {
+		if _, err := s.saveReceipt(ctx, resp); err != nil {
+			slog.ErrorContext(ctx, "save receipt", "error", err)
+			return
+		}
+		if err := s.sendConfirmationMessage(ctx, now, resp); err != nil {
+			slog.ErrorContext(ctx, "send confirmation message", "error", err)
+			return
+		}
+	}()
+
+	return resp, nil
+}
+
+func (s *paymentMakingCardService) buildResponse(req *dto.PayWithCardRequest, status dto.PaymentStatus, now time.Time) (*dto.PayWithCardResponse, error) {
+	cardNumber := req.GetCard().GetNumber()
+	cardNumberLast4 := cardNumber[len(cardNumber)-4:]
+
+	cardSummary := &dto.CardSummary{
+		Brand: req.GetCard().GetBrand(),
+		Last4: cardNumberLast4,
+	}
+
+	receiptNumber, err := util.GenerateHumanFriendlyId("RCPT", now)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.PayWithCardResponse{
+		ReceiptNumber: receiptNumber,
+		Status:        status,
+		ProcessedAt:   timestamppb.Now(),
+		Card:          cardSummary,
+	}, nil
+
+}
+
+func (s *paymentMakingCardService) saveReceipt(ctx context.Context, resp *dto.PayWithCardResponse) (document.Receipt, error) {
+	receipt, err := document.NewReceipt(resp)
+	if err != nil {
+		return document.Receipt{}, status.Error(codes.Internal, fmt.Sprintf("create receipt: %v", err))
 	}
 
 	if _, err := s.receiptRepo.Add(ctx, receipt); err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("save receipt: %v", err))
+		return document.Receipt{}, status.Error(codes.Internal, fmt.Sprintf("save receipt: %v", err))
+	}
+	return receipt, nil
+}
+
+func (s *paymentMakingCardService) sendConfirmationMessage(ctx context.Context, now *time.Time, resp *dto.PayWithCardResponse) error {
+	invoice, err := s.invoiceRepo.Get(ctx, resp.GetInvoiceNumber())
+	if err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("get invoice: %v", err))
 	}
 
 	confirmation := &dto.PaymentConfirmation{
-		Id:              bson.NewObjectID().Hex(),
-		PaymentIntentId: paymentIntentID.Hex(),
-		BookingId:       invoice.BookingId.Hex(),
-		Amount: &dto.Money{
-			Amount:   invoice.Total.Amount,
-			Currency: invoice.Total.Currency,
-		},
-		Method:    dto.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD,
-		ReceiptId: receiptBusinessID.Hex(),
-		Card: &dto.CardSummary{
-			Brand: req.GetCard().GetBrand(),
-			Last4: last4,
-		},
-		ConfirmedAt: timestamppb.New(confirmedAt),
+		Id:            uuid.New().String(),
+		BookingId:     invoice.BookingId,
+		PayerId:       invoice.PayerId,
+		InvoiceNumber: invoice.InvoiceNumber,
+		ReceiptNumber: resp.GetReceiptNumber(),
+		ConfirmedAt:   timestamppb.New(*now),
 	}
 
-	if err := s.paymentProducer.Publish(ctx, confirmation); err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("publish payment confirmation: %v", err))
-	}
+	routingKey := fmt.Sprintf("booking.%s.confirmation", invoice.BookingId)
 
-	return &resp, nil
+	if err := s.paymentProducer.Publish(ctx, confirmation, routingKey); err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("publish payment confirmation: %v", err))
+	}
+	return nil
 }

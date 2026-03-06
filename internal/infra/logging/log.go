@@ -2,9 +2,10 @@ package logging
 
 import (
 	"context"
-	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"log/slog"
 	"os"
+
+	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 
 	"go.opentelemetry.io/otel/trace"
 )

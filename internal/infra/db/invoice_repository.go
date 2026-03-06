@@ -18,9 +18,9 @@ func NewInvoiceRepo(db *mongo.Database) port.InvoiceRepo {
 	return &invoiceRepo{collection: db.Collection("invoices")}
 }
 
-func (i invoiceRepo) Get(ctx context.Context, id bson.ObjectID) (document.Invoice, error) {
+func (i invoiceRepo) Get(ctx context.Context, receiptNumber string) (document.Invoice, error) {
 	var invoice document.Invoice
-	if err := i.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&invoice); err != nil {
+	if err := i.collection.FindOne(ctx, bson.M{"receipt_number": receiptNumber}).Decode(&invoice); err != nil {
 		return document.Invoice{}, err
 	}
 	return invoice, nil

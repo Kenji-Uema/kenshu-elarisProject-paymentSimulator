@@ -26,9 +26,9 @@ var File_paymentSimulator_payment_paymentMakingCardService_proto protoreflect.Fi
 
 const file_paymentSimulator_payment_paymentMakingCardService_proto_rawDesc = "" +
 	"\n" +
-	"7paymentSimulator/payment/paymentMakingCardService.proto\x12\x1bpaymentSimulator.payment.v1\x1a\x1cgoogle/api/annotations.proto\x1a0paymentSimulator/payment/paymentMakingCard.proto2\xaf\x01\n" +
-	"\x18PaymentMakingCardService\x12\x92\x01\n" +
-	"\vPayWithCard\x12/.paymentSimulator.payment.v1.PayWithCardRequest\x1a0.paymentSimulator.payment.v1.PayWithCardResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/v1/payments/card:payB9Z7github.com/Kenji-Uema/paymentSimulator/internal/app;appb\x06proto3"
+	"7paymentSimulator/payment/paymentMakingCardService.proto\x12\x1bpaymentSimulator.payment.v1\x1a\x1cgoogle/api/annotations.proto\x1a0paymentSimulator/payment/paymentMakingCard.proto2\xc2\x01\n" +
+	"\x18PaymentMakingCardService\x12\xa5\x01\n" +
+	"\vPayWithCard\x12/.paymentSimulator.payment.v1.PayWithCardRequest\x1a0.paymentSimulator.payment.v1.PayWithCardResponse\"3\x82\xd3\xe4\x93\x02-:\x04card\"%/v1/payments/invoice/{invoice_number}B9Z7github.com/Kenji-Uema/paymentSimulator/internal/app;appb\x06proto3"
 
 var file_paymentSimulator_payment_paymentMakingCardService_proto_goTypes = []any{
 	(*dto.PayWithCardRequest)(nil),  // 0: paymentSimulator.payment.v1.PayWithCardRequest
