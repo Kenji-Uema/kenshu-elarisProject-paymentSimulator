@@ -21,7 +21,7 @@ type CardSummary struct {
 	Last4 string `bson:"last4"`
 }
 
-func NewReceipt(dto *dto.PayWithCardResponse) (Receipt, error) {
+func NewReceiptFromProtMessage(dto *dto.PayWithCardResponse) (Receipt, error) {
 	if err := validation.New().
 		NotBlank("receiptNumber", dto.GetReceiptNumber()).
 		NotBlank("invoiceNumber", dto.GetInvoiceNumber()).

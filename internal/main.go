@@ -63,7 +63,7 @@ func main() {
 	err = payment.RegisterPaymentMakingCardServiceHandlerServer(ctx, gwMux, paymentMakingCardService)
 	exitOnError(ctx, "register gateway handler", err)
 
-	httpServer := http.NewHttpServer(configs.ServerConfig, configs.TelemetryConfig, gwMux, rabbitMqClient)
+	httpServer := http.NewHttpServer(configs.ServerConfig, configs.TelemetryConfig, gwMux, rabbitMqClient, mongoDb)
 	httpServer.SetServer()
 	go httpServer.Run(ctx)
 

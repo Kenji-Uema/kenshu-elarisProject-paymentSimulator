@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand"
@@ -12,11 +13,12 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/appErrors"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment"
 	"github.com/google/uuid"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -58,15 +60,18 @@ func (s *paymentMakingCardService) PayWithCard(ctx context.Context, req *dto.Pay
 
 	now, err := s.clock.Now(ctx)
 	if err != nil {
-		return nil, err
+		slog.ErrorContext(ctx, "get current time", "error", err)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if rand.Int() < s.config.FailChance {
+	if n := rand.Int(); n < s.config.FailChance {
+		slog.InfoContext(ctx, "payment failed; generated random number below threashold", "number", n, "chance", s.config.FailChance)
 		return s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_FAILED, *now)
 	}
 	resp, err := s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_SUCCEEDED, *now)
 	if err != nil {
-		return nil, err
+		slog.ErrorContext(ctx, "build response", "error", err)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	go func() {
@@ -107,21 +112,45 @@ func (s *paymentMakingCardService) buildResponse(req *dto.PayWithCardRequest, st
 }
 
 func (s *paymentMakingCardService) saveReceipt(ctx context.Context, resp *dto.PayWithCardResponse) (document.Receipt, error) {
-	receipt, err := document.NewReceipt(resp)
+	receipt, err := document.NewReceiptFromProtMessage(resp)
 	if err != nil {
-		return document.Receipt{}, status.Error(codes.Internal, fmt.Sprintf("create receipt: %v", err))
+		return document.Receipt{}, err
 	}
 
-	if _, err := s.receiptRepo.Add(ctx, receipt); err != nil {
-		return document.Receipt{}, status.Error(codes.Internal, fmt.Sprintf("save receipt: %v", err))
+	receiptId, err := s.receiptRepo.Add(ctx, receipt)
+	if err != nil {
+		var alreadyExistsErr *dbErrors.AlreadyExistsErr
+		if errors.As(err, &alreadyExistsErr) {
+			return document.Receipt{}, &appErrors.AlreadyExistsErr{Err: err}
+		}
+
+		var corruptedDataErr *dbErrors.CorruptedDataErr
+		if errors.As(err, &corruptedDataErr) {
+			return document.Receipt{}, status.Error(codes.Internal, "database returned corrupted receipt data")
+		}
+
+		return document.Receipt{}, &appErrors.UnexpectedErr{Msg: "unexpect error happened while saving receipt", Err: err}
 	}
+
+	slog.InfoContext(ctx, "receipt saved", "receipt_id", receiptId)
+
 	return receipt, nil
 }
 
 func (s *paymentMakingCardService) sendConfirmationMessage(ctx context.Context, now *time.Time, resp *dto.PayWithCardResponse) error {
 	invoice, err := s.invoiceRepo.Get(ctx, resp.GetInvoiceNumber())
 	if err != nil {
-		return status.Error(codes.Internal, fmt.Sprintf("get invoice: %v", err))
+		var notFoundErr *dbErrors.InvoiceNotFoundErr
+		if errors.As(err, &notFoundErr) {
+			return &appErrors.InvoiceNotFoundErr{Err: err}
+		}
+
+		var corruptedDataErr *dbErrors.CorruptedDataErr
+		if errors.As(err, &corruptedDataErr) {
+			return &appErrors.CorruptedDataError{Err: err}
+		}
+
+		return &appErrors.UnexpectedErr{Msg: "unexpected error happened while getting invoice", Err: err}
 	}
 
 	confirmation := &dto.PaymentConfirmation{
@@ -136,7 +165,10 @@ func (s *paymentMakingCardService) sendConfirmationMessage(ctx context.Context, 
 	routingKey := fmt.Sprintf("booking.%s.confirmation", invoice.BookingId)
 
 	if err := s.paymentProducer.Publish(ctx, confirmation, routingKey); err != nil {
-		return status.Error(codes.Internal, fmt.Sprintf("publish payment confirmation: %v", err))
+		return &appErrors.UnexpectedErr{
+			Msg: "unexpected error happened while publishing payment confirmation message",
+			Err: err,
+		}
 	}
 	return nil
 }

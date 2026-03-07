@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/mqErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
@@ -67,16 +68,19 @@ func (p *rabbitmqProducer) DeclareExchange(config config.ExchangeConfig) error {
 
 func (p *rabbitmqProducer) Publish(ctx context.Context, message proto.Message, routingKey string) error {
 	if p.channel == nil || p.channel.IsClosed() {
+		slog.Warn("channel is closed, opening a new one")
 		ch, err := p.Channel()
 		if err != nil {
-			return fmt.Errorf("open channel: %w", err)
+			slog.ErrorContext(ctx, "failed to open channel", "error", err)
+			return &mqErrors.UnexpectedErr{Msg: "unexpected error when reopening channel", Err: err}
 		}
 		p.channel = ch
 	}
 
 	payload, err := protojson.Marshal(message)
 	if err != nil {
-		return fmt.Errorf("marshal payment confirmation: %w", err)
+		slog.ErrorContext(ctx, "failed to marshal message", "error", err)
+		return &mqErrors.UnexpectedErr{Msg: "failed to marshal message", Err: err}
 	}
 
 	headers := amqp.Table{}
@@ -102,7 +106,8 @@ func (p *rabbitmqProducer) Publish(ctx context.Context, message proto.Message, r
 			Timestamp:    time.Now(),
 		},
 	); err != nil {
-		return fmt.Errorf("publish payment confirmation: %w", err)
+		slog.ErrorContext(ctx, "failed to publish message", "error", err)
+		return &mqErrors.UnexpectedErr{Msg: "failed to publish message", Err: err}
 	}
 
 	return nil

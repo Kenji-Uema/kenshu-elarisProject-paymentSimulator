@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
+	"github.com/Kenji-Uema/paymentSimulator/internal/infra/db"
 	"github.com/Kenji-Uema/paymentSimulator/internal/infra/mq"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/http/probe"
 
@@ -22,21 +23,22 @@ type Server struct {
 	server           *http.Server
 	paymentServerMux *runtime.ServeMux
 	rabbitmqClient   *mq.RabbitMqConnection
+	mongoClient      *db.Db
 	serverConfig     config.ServerConfig
 	telemetryConfig  config.TelemetryConfig
 }
 
 func NewHttpServer(config config.ServerConfig, telemetryConfig config.TelemetryConfig,
-	paymentServerMux *runtime.ServeMux, rabbitmqClient *mq.RabbitMqConnection) *Server {
+	paymentServerMux *runtime.ServeMux, rabbitmqClient *mq.RabbitMqConnection, mongoClient *db.Db) *Server {
 
 	return &Server{serverConfig: config, telemetryConfig: telemetryConfig,
-		paymentServerMux: paymentServerMux, rabbitmqClient: rabbitmqClient}
+		paymentServerMux: paymentServerMux, rabbitmqClient: rabbitmqClient, mongoClient: mongoClient}
 }
 
 func (s *Server) SetServer() {
 	rootMux := http.NewServeMux()
 	rootMux.HandleFunc("/healthz", probe.HealthHandler)
-	rootMux.HandleFunc("/readyz", probe.ReadinessHandler(s.rabbitmqClient, s.telemetryConfig))
+	rootMux.HandleFunc("/readyz", probe.ReadinessHandler(s.rabbitmqClient, s.mongoClient))
 	rootMux.Handle("/", s.traceContextMiddleware(otelhttp.NewHandler(s.paymentServerMux, "payment-http-gateway")))
 
 	server := &http.Server{

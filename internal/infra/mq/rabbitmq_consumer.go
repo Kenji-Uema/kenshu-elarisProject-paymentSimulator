@@ -3,8 +3,10 @@ package mq
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/mqErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -94,9 +96,12 @@ func (c *rabbitmqConsumer) BindQueue(config config.BindingConfig) error {
 
 func (c *rabbitmqConsumer) Consume(ctx context.Context) (<-chan amqp.Delivery, error) {
 	if c.channel == nil {
+		slog.InfoContext(ctx, "channel not opened, opening channel")
+
 		ch, err := c.Channel()
 		if err != nil {
-			return nil, fmt.Errorf("open channel: %w", err)
+			slog.ErrorContext(ctx, "failed to open channel", "error", err)
+			return nil, &mqErrors.UnexpectedErr{Msg: "unexpected error when reopening channel", Err: err}
 		}
 		c.channel = ch
 	}
@@ -112,7 +117,8 @@ func (c *rabbitmqConsumer) Consume(ctx context.Context) (<-chan amqp.Delivery, e
 		c.consumeConfig.Args,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("start consuming queue %q: %w", c.queue.Name, err)
+		slog.ErrorContext(ctx, "failed to consume queue", "error", err)
+		return nil, &mqErrors.UnexpectedErr{Msg: fmt.Sprintf("start consuming queue %q", c.queue.Name), Err: err}
 	}
 
 	return deliveries, nil

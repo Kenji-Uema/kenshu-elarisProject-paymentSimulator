@@ -67,17 +67,3 @@ func (d *Db) Collection(name string) *mongo.Collection {
 func (d *Db) Ping() error {
 	return d.Client.Ping(context.Background(), readpref.Primary())
 }
-
-func (d *Db) DropAll(ctx context.Context) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	err := d.Database.Drop(ctx)
-
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to drop database", "error", err)
-		return
-	}
-
-	slog.InfoContext(ctx, "database dropped successfully")
-}
