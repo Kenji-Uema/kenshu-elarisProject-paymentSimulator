@@ -85,8 +85,8 @@ func (c *rabbitmqConsumer) BindQueue(config config.BindingConfig) error {
 		return fmt.Errorf(
 			"bind queue %q to exchange %q with routing key %q: %w",
 			c.queue.Name,
-			c.queue.Name,
 			config.ExchangeName,
+			config.RoutingKey,
 			err,
 		)
 	}
@@ -112,8 +112,8 @@ func (c *rabbitmqConsumer) Consume(ctx context.Context) (<-chan amqp.Delivery, e
 		c.consumeConfig.Consumer,
 		c.consumeConfig.AutoAck,
 		c.consumeConfig.Exclusive,
-		c.consumeConfig.AutoAck,
 		c.consumeConfig.NoLocal,
+		c.consumeConfig.NoWait,
 		c.consumeConfig.Args,
 	)
 	if err != nil {

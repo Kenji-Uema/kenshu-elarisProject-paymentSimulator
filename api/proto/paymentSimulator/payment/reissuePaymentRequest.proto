@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package paymentSimulator.payment.v1;
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/domain/dto;dto";
+
+message ReissuePaymentRequest {
+  string booking_number = 1;
+  string document_number = 2;
+}

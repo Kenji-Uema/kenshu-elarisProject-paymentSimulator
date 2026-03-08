@@ -10,10 +10,12 @@ plugins:
     opt:
       - paths=import
       - module=github.com/Kenji-Uema/paymentSimulator
-      - MpaymentSimulator/payment/paymentMakingCardService.proto=github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment;payment
+      - MpaymentSimulator/payment/service/paymentMakingService.proto=github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment;payment
+      - MpaymentSimulator/payment/service/paymentRequestReissueService.proto=github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment;payment
   - local: protoc-gen-grpc-gateway
     out: .
     opt:
       - paths=import
       - module=github.com/Kenji-Uema/paymentSimulator
-      - MpaymentSimulator/payment/paymentMakingCardService.proto=github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment;payment
+      - MpaymentSimulator/payment/service/paymentMakingService.proto=github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment;payment
+      - MpaymentSimulator/payment/service/paymentRequestReissueService.proto=github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment;payment

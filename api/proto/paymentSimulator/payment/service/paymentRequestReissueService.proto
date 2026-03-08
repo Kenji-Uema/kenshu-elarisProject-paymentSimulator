@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package paymentSimulator.payment.v1;
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/app/payment;payment";
+
+import "google/api/annotations.proto";
+import "paymentSimulator/payment/paymentRequest.proto";
+import "paymentSimulator/payment/reissuePaymentRequest.proto";
+
+
+service PaymentRequestService {
+  rpc Reissue(ReissuePaymentRequest) returns (PaymentRequest) {
+    option (google.api.http) = {
+      post: "/v1/payments/payment_request/reissue"
+      body: "*"
+    };
+  }
+}

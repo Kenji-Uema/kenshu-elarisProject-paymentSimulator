@@ -87,7 +87,7 @@ func (s *invoiceService) processInvoiceDelivery(ctx context.Context, delivery am
 	}
 	slog.InfoContext(ctx, "invoice created", "invoice_id", invoiceID)
 
-	if err := s.publishPaymentConfirmation(ctx, invoice); err != nil {
+	if err := s.publishPaymentRequest(ctx, invoice); err != nil {
 		var validationErr *validationErrors.ErrValidationConstrain
 		if errors.As(err, &validationErr) {
 			s.nack(ctx, delivery, false, false)
@@ -146,7 +146,7 @@ func (s *invoiceService) saveInvoice(ctx context.Context, invoice document.Invoi
 	return invoiceID, nil
 }
 
-func (s *invoiceService) publishPaymentConfirmation(ctx context.Context, invoice document.Invoice) error {
+func (s *invoiceService) publishPaymentRequest(ctx context.Context, invoice document.Invoice) error {
 	paymentRequest := &dto.PaymentRequest{
 		InvoiceNumber: invoice.InvoiceNumber,
 		Total: &dto.Money{

@@ -1,12 +1,12 @@
 syntax = "proto3";
 
 package paymentSimulator.payment.v1;
-option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/app;app";
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/app/payment;payment";
 
 import "google/api/annotations.proto";
-import "paymentSimulator/payment/paymentMakingCard.proto";
+import "paymentSimulator/payment/payWithCard.proto";
 
-service PaymentMakingCardService {
+service PaymentMakingService {
   rpc PayWithCard(PayWithCardRequest) returns (PayWithCardResponse) {
     option (google.api.http) = {
       post: "/v1/payments/invoice/{invoice_number}"

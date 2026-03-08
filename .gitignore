@@ -22,4 +22,5 @@
 .DS_Store
 Thumbs.db
 
-/.gocache
+.gocache/
+.gomodcache/

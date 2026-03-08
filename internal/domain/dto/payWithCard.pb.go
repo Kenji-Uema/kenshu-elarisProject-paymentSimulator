@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: paymentSimulator/payment/paymentMakingCard.proto
+// source: paymentSimulator/payment/payWithCard.proto
 
 package dto
 
@@ -64,11 +64,11 @@ func (x PaymentStatus) String() string {
 }
 
 func (PaymentStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_paymentSimulator_payment_paymentMakingCard_proto_enumTypes[0].Descriptor()
+	return file_paymentSimulator_payment_payWithCard_proto_enumTypes[0].Descriptor()
 }
 
 func (PaymentStatus) Type() protoreflect.EnumType {
-	return &file_paymentSimulator_payment_paymentMakingCard_proto_enumTypes[0]
+	return &file_paymentSimulator_payment_payWithCard_proto_enumTypes[0]
 }
 
 func (x PaymentStatus) Number() protoreflect.EnumNumber {
@@ -77,7 +77,7 @@ func (x PaymentStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PaymentStatus.Descriptor instead.
 func (PaymentStatus) EnumDescriptor() ([]byte, []int) {
-	return file_paymentSimulator_payment_paymentMakingCard_proto_rawDescGZIP(), []int{0}
+	return file_paymentSimulator_payment_payWithCard_proto_rawDescGZIP(), []int{0}
 }
 
 // request
@@ -91,7 +91,7 @@ type PayWithCardRequest struct {
 
 func (x *PayWithCardRequest) Reset() {
 	*x = PayWithCardRequest{}
-	mi := &file_paymentSimulator_payment_paymentMakingCard_proto_msgTypes[0]
+	mi := &file_paymentSimulator_payment_payWithCard_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -103,7 +103,7 @@ func (x *PayWithCardRequest) String() string {
 func (*PayWithCardRequest) ProtoMessage() {}
 
 func (x *PayWithCardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_paymentSimulator_payment_paymentMakingCard_proto_msgTypes[0]
+	mi := &file_paymentSimulator_payment_payWithCard_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -116,7 +116,7 @@ func (x *PayWithCardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PayWithCardRequest.ProtoReflect.Descriptor instead.
 func (*PayWithCardRequest) Descriptor() ([]byte, []int) {
-	return file_paymentSimulator_payment_paymentMakingCard_proto_rawDescGZIP(), []int{0}
+	return file_paymentSimulator_payment_payWithCard_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *PayWithCardRequest) GetCard() *Card {
@@ -147,7 +147,7 @@ type Card struct {
 
 func (x *Card) Reset() {
 	*x = Card{}
-	mi := &file_paymentSimulator_payment_paymentMakingCard_proto_msgTypes[1]
+	mi := &file_paymentSimulator_payment_payWithCard_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -159,7 +159,7 @@ func (x *Card) String() string {
 func (*Card) ProtoMessage() {}
 
 func (x *Card) ProtoReflect() protoreflect.Message {
-	mi := &file_paymentSimulator_payment_paymentMakingCard_proto_msgTypes[1]
+	mi := &file_paymentSimulator_payment_payWithCard_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -172,7 +172,7 @@ func (x *Card) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Card.ProtoReflect.Descriptor instead.
 func (*Card) Descriptor() ([]byte, []int) {
-	return file_paymentSimulator_payment_paymentMakingCard_proto_rawDescGZIP(), []int{1}
+	return file_paymentSimulator_payment_payWithCard_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Card) GetBrand() string {
@@ -231,7 +231,7 @@ type PayWithCardResponse struct {
 
 func (x *PayWithCardResponse) Reset() {
 	*x = PayWithCardResponse{}
-	mi := &file_paymentSimulator_payment_paymentMakingCard_proto_msgTypes[2]
+	mi := &file_paymentSimulator_payment_payWithCard_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -243,7 +243,7 @@ func (x *PayWithCardResponse) String() string {
 func (*PayWithCardResponse) ProtoMessage() {}
 
 func (x *PayWithCardResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_paymentSimulator_payment_paymentMakingCard_proto_msgTypes[2]
+	mi := &file_paymentSimulator_payment_payWithCard_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -256,7 +256,7 @@ func (x *PayWithCardResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PayWithCardResponse.ProtoReflect.Descriptor instead.
 func (*PayWithCardResponse) Descriptor() ([]byte, []int) {
-	return file_paymentSimulator_payment_paymentMakingCard_proto_rawDescGZIP(), []int{2}
+	return file_paymentSimulator_payment_payWithCard_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *PayWithCardResponse) GetReceiptNumber() string {
@@ -294,11 +294,11 @@ func (x *PayWithCardResponse) GetProcessedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-var File_paymentSimulator_payment_paymentMakingCard_proto protoreflect.FileDescriptor
+var File_paymentSimulator_payment_payWithCard_proto protoreflect.FileDescriptor
 
-const file_paymentSimulator_payment_paymentMakingCard_proto_rawDesc = "" +
+const file_paymentSimulator_payment_payWithCard_proto_rawDesc = "" +
 	"\n" +
-	"0paymentSimulator/payment/paymentMakingCard.proto\x12\x1bpaymentSimulator.payment.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a)paymentSimulator/common/cardSummary.proto\"r\n" +
+	"*paymentSimulator/payment/payWithCard.proto\x12\x1bpaymentSimulator.payment.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a)paymentSimulator/common/cardSummary.proto\"r\n" +
 	"\x12PayWithCardRequest\x125\n" +
 	"\x04card\x18\x01 \x01(\v2!.paymentSimulator.payment.v1.CardR\x04card\x12%\n" +
 	"\x0einvoice_number\x18\x02 \x01(\tR\rinvoiceNumber\"\x9f\x01\n" +
@@ -325,20 +325,20 @@ const file_paymentSimulator_payment_paymentMakingCard_proto_rawDesc = "" +
 	"\x18PAYMENT_STATUS_CANCELLED\x10\x05B@Z>github.com/Kenji-Uema/paymentSimulator/internal/domain/dto;dtob\x06proto3"
 
 var (
-	file_paymentSimulator_payment_paymentMakingCard_proto_rawDescOnce sync.Once
-	file_paymentSimulator_payment_paymentMakingCard_proto_rawDescData []byte
+	file_paymentSimulator_payment_payWithCard_proto_rawDescOnce sync.Once
+	file_paymentSimulator_payment_payWithCard_proto_rawDescData []byte
 )
 
-func file_paymentSimulator_payment_paymentMakingCard_proto_rawDescGZIP() []byte {
-	file_paymentSimulator_payment_paymentMakingCard_proto_rawDescOnce.Do(func() {
-		file_paymentSimulator_payment_paymentMakingCard_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_paymentSimulator_payment_paymentMakingCard_proto_rawDesc), len(file_paymentSimulator_payment_paymentMakingCard_proto_rawDesc)))
+func file_paymentSimulator_payment_payWithCard_proto_rawDescGZIP() []byte {
+	file_paymentSimulator_payment_payWithCard_proto_rawDescOnce.Do(func() {
+		file_paymentSimulator_payment_payWithCard_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_paymentSimulator_payment_payWithCard_proto_rawDesc), len(file_paymentSimulator_payment_payWithCard_proto_rawDesc)))
 	})
-	return file_paymentSimulator_payment_paymentMakingCard_proto_rawDescData
+	return file_paymentSimulator_payment_payWithCard_proto_rawDescData
 }
 
-var file_paymentSimulator_payment_paymentMakingCard_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_paymentSimulator_payment_paymentMakingCard_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_paymentSimulator_payment_paymentMakingCard_proto_goTypes = []any{
+var file_paymentSimulator_payment_payWithCard_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_paymentSimulator_payment_payWithCard_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_paymentSimulator_payment_payWithCard_proto_goTypes = []any{
 	(PaymentStatus)(0),            // 0: paymentSimulator.payment.v1.PaymentStatus
 	(*PayWithCardRequest)(nil),    // 1: paymentSimulator.payment.v1.PayWithCardRequest
 	(*Card)(nil),                  // 2: paymentSimulator.payment.v1.Card
@@ -346,7 +346,7 @@ var file_paymentSimulator_payment_paymentMakingCard_proto_goTypes = []any{
 	(*CardSummary)(nil),           // 4: paymentSimulator.common.CardSummary
 	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
 }
-var file_paymentSimulator_payment_paymentMakingCard_proto_depIdxs = []int32{
+var file_paymentSimulator_payment_payWithCard_proto_depIdxs = []int32{
 	2, // 0: paymentSimulator.payment.v1.PayWithCardRequest.card:type_name -> paymentSimulator.payment.v1.Card
 	0, // 1: paymentSimulator.payment.v1.PayWithCardResponse.status:type_name -> paymentSimulator.payment.v1.PaymentStatus
 	4, // 2: paymentSimulator.payment.v1.PayWithCardResponse.card:type_name -> paymentSimulator.common.CardSummary
@@ -358,9 +358,9 @@ var file_paymentSimulator_payment_paymentMakingCard_proto_depIdxs = []int32{
 	0, // [0:4] is the sub-list for field type_name
 }
 
-func init() { file_paymentSimulator_payment_paymentMakingCard_proto_init() }
-func file_paymentSimulator_payment_paymentMakingCard_proto_init() {
-	if File_paymentSimulator_payment_paymentMakingCard_proto != nil {
+func init() { file_paymentSimulator_payment_payWithCard_proto_init() }
+func file_paymentSimulator_payment_payWithCard_proto_init() {
+	if File_paymentSimulator_payment_payWithCard_proto != nil {
 		return
 	}
 	file_paymentSimulator_common_cardSummary_proto_init()
@@ -368,18 +368,18 @@ func file_paymentSimulator_payment_paymentMakingCard_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_paymentSimulator_payment_paymentMakingCard_proto_rawDesc), len(file_paymentSimulator_payment_paymentMakingCard_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_paymentSimulator_payment_payWithCard_proto_rawDesc), len(file_paymentSimulator_payment_payWithCard_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_paymentSimulator_payment_paymentMakingCard_proto_goTypes,
-		DependencyIndexes: file_paymentSimulator_payment_paymentMakingCard_proto_depIdxs,
-		EnumInfos:         file_paymentSimulator_payment_paymentMakingCard_proto_enumTypes,
-		MessageInfos:      file_paymentSimulator_payment_paymentMakingCard_proto_msgTypes,
+		GoTypes:           file_paymentSimulator_payment_payWithCard_proto_goTypes,
+		DependencyIndexes: file_paymentSimulator_payment_payWithCard_proto_depIdxs,
+		EnumInfos:         file_paymentSimulator_payment_payWithCard_proto_enumTypes,
+		MessageInfos:      file_paymentSimulator_payment_payWithCard_proto_msgTypes,
 	}.Build()
-	File_paymentSimulator_payment_paymentMakingCard_proto = out.File
-	file_paymentSimulator_payment_paymentMakingCard_proto_goTypes = nil
-	file_paymentSimulator_payment_paymentMakingCard_proto_depIdxs = nil
+	File_paymentSimulator_payment_payWithCard_proto = out.File
+	file_paymentSimulator_payment_payWithCard_proto_goTypes = nil
+	file_paymentSimulator_payment_payWithCard_proto_depIdxs = nil
 }

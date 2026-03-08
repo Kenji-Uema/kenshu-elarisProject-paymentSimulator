@@ -54,13 +54,13 @@ func main() {
 	clockEmu, err := grpc.NewClockEmu(configs.ClockEmuConfig)
 	exitOnError(ctx, "failed to create clock emu", err)
 
-	paymentMakingCardService := app.NewPaymentMakingCardServer(configs.PaymentMakingCardConfig, clockEmu, invoiceRepo, receiptRepo, paymentProducer)
+	paymentMakingService := app.NewPaymentMakingServer(configs.PaymentMakingCardConfig, clockEmu, invoiceRepo, receiptRepo, paymentProducer)
 	invoiceService := app.NewInvoiceService(invoiceRepo, clockEmu, invoiceConsumer, paymentProducer, configs.PaymentMakingCardConfig)
 
 	invoiceService.StartInvoiceProcessing(ctx)
 
 	gwMux := runtime.NewServeMux()
-	err = payment.RegisterPaymentMakingCardServiceHandlerServer(ctx, gwMux, paymentMakingCardService)
+	err = payment.RegisterPaymentMakingServiceHandlerServer(ctx, gwMux, paymentMakingService)
 	exitOnError(ctx, "register gateway handler", err)
 
 	httpServer := http.NewHttpServer(configs.ServerConfig, configs.TelemetryConfig, gwMux, rabbitMqClient, mongoDb)

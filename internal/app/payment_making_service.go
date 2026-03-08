@@ -24,8 +24,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type paymentMakingCardService struct {
-	payment.PaymentMakingCardServiceServer
+type paymentMakingService struct {
+	payment.PaymentMakingServiceServer
 	config          config.PaymentMakingCardConfig
 	clock           *grpc.Clock
 	invoiceRepo     port.InvoiceRepo
@@ -33,9 +33,9 @@ type paymentMakingCardService struct {
 	paymentProducer port.MqProducer
 }
 
-func NewPaymentMakingCardServer(config config.PaymentMakingCardConfig, clock *grpc.Clock,
-	invoiceRepo port.InvoiceRepo, receiptRepo port.ReceiptRepo, producer port.MqProducer) payment.PaymentMakingCardServiceServer {
-	return &paymentMakingCardService{
+func NewPaymentMakingServer(config config.PaymentMakingCardConfig, clock *grpc.Clock,
+	invoiceRepo port.InvoiceRepo, receiptRepo port.ReceiptRepo, producer port.MqProducer) payment.PaymentMakingServiceServer {
+	return &paymentMakingService{
 		config:          config,
 		clock:           clock,
 		invoiceRepo:     invoiceRepo,
@@ -44,7 +44,7 @@ func NewPaymentMakingCardServer(config config.PaymentMakingCardConfig, clock *gr
 	}
 }
 
-func (s *paymentMakingCardService) PayWithCard(ctx context.Context, req *dto.PayWithCardRequest) (*dto.PayWithCardResponse, error) {
+func (s *paymentMakingService) PayWithCard(ctx context.Context, req *dto.PayWithCardRequest) (*dto.PayWithCardResponse, error) {
 	slog.DebugContext(ctx, "card information")
 
 	if err := validation.New().
@@ -89,7 +89,7 @@ func (s *paymentMakingCardService) PayWithCard(ctx context.Context, req *dto.Pay
 	return resp, nil
 }
 
-func (s *paymentMakingCardService) buildResponse(req *dto.PayWithCardRequest, status dto.PaymentStatus, now time.Time) (*dto.PayWithCardResponse, error) {
+func (s *paymentMakingService) buildResponse(req *dto.PayWithCardRequest, status dto.PaymentStatus, now time.Time) (*dto.PayWithCardResponse, error) {
 	cardNumber := req.GetCard().GetNumber()
 	cardNumberLast4 := cardNumber[len(cardNumber)-4:]
 
@@ -112,7 +112,7 @@ func (s *paymentMakingCardService) buildResponse(req *dto.PayWithCardRequest, st
 
 }
 
-func (s *paymentMakingCardService) saveReceipt(ctx context.Context, resp *dto.PayWithCardResponse) (document.Receipt, error) {
+func (s *paymentMakingService) saveReceipt(ctx context.Context, resp *dto.PayWithCardResponse) (document.Receipt, error) {
 	receipt, err := document.NewReceiptFromProtMessage(resp)
 	if err != nil {
 		return document.Receipt{}, err
@@ -138,7 +138,7 @@ func (s *paymentMakingCardService) saveReceipt(ctx context.Context, resp *dto.Pa
 	return receipt, nil
 }
 
-func (s *paymentMakingCardService) sendConfirmationMessage(ctx context.Context, now *time.Time, resp *dto.PayWithCardResponse) error {
+func (s *paymentMakingService) sendConfirmationMessage(ctx context.Context, now *time.Time, resp *dto.PayWithCardResponse) error {
 	invoice, err := s.invoiceRepo.Get(ctx, resp.GetInvoiceNumber())
 	if err != nil {
 		var notFoundErr *dbErrors.InvoiceNotFoundErr

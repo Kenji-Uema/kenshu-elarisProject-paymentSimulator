@@ -10,6 +10,7 @@ import (
 type InvoiceRepo interface {
 	Get(ctx context.Context, invoiceNumber string) (document.Invoice, error)
 	Add(ctx context.Context, invoice document.Invoice) (bson.ObjectID, error)
+	FindByBookingNumberAndDocumentNumber(ctx context.Context, bookingNumber string, documentNumber string) (document.Invoice, error)
 }
 
 type ReceiptRepo interface {
