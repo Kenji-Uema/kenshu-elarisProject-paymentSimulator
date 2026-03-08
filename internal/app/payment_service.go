@@ -48,12 +48,12 @@ func (s *paymentMakingCardService) PayWithCard(ctx context.Context, req *dto.Pay
 	slog.DebugContext(ctx, "card information")
 
 	if err := validation.New().
-		NotBlank("invoice_number", req.InvoiceNumber).
-		NotBlank("card.number", req.Card.Number).
-		NotZeroValue("card.exp_month", req.Card.ExpMonth).
-		NotZeroValue("card.exp_year", req.Card.ExpYear).
-		NotBlank("card.cvv", req.Card.Cvv).
-		NotBlank("card.holder_name", req.Card.HolderName).Validate(); err != nil {
+		NotBlank("invoice_number", req.GetInvoiceNumber()).
+		NotBlank("card.number", req.GetCard().GetNumber()).
+		NotZeroValue("card.exp_month", req.GetCard().GetExpMonth()).
+		NotZeroValue("card.exp_year", req.GetCard().GetExpYear()).
+		NotBlank("card.cvv", req.GetCard().GetCvv()).
+		NotBlank("card.holder_name", req.GetCard().GetHolderName()).Validate(); err != nil {
 
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -65,9 +65,10 @@ func (s *paymentMakingCardService) PayWithCard(ctx context.Context, req *dto.Pay
 	}
 
 	if n := rand.Int(); n < s.config.FailChance {
-		slog.InfoContext(ctx, "payment failed; generated random number below threashold", "number", n, "chance", s.config.FailChance)
+		slog.InfoContext(ctx, "payment failed; generated random number below threshold", "number", n, "chance", s.config.FailChance)
 		return s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_FAILED, *now)
 	}
+
 	resp, err := s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_SUCCEEDED, *now)
 	if err != nil {
 		slog.ErrorContext(ctx, "build response", "error", err)

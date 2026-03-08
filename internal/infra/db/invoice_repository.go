@@ -50,14 +50,20 @@ func (i invoiceRepo) Add(ctx context.Context, invoice document.Invoice) (bson.Ob
 
 	res, err := i.collection.InsertOne(ctx, invoice)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to insert invoice", "error", err, "invoice", invoice)
+		if mongo.IsDuplicateKeyError(err) {
+			return bson.NilObjectID, &dbErrors.AlreadyExistsErr{Err: err}
+		}
+
 		return bson.ObjectID{}, &dbErrors.UnexpectedErr{Msg: "failed to insert invoice", Err: err}
 	}
 
 	invoiceId, ok := res.InsertedID.(bson.ObjectID)
 	if !ok {
 		slog.ErrorContext(ctx, "unexpected inserted id type", "type", fmt.Sprintf("%T", res.InsertedID))
-		return bson.ObjectID{}, &dbErrors.UnexpectedErr{Msg: "unexpected inserted id type", Err: err}
+		return bson.ObjectID{}, &dbErrors.UnexpectedErr{
+			Msg: "unexpected inserted id type",
+			Err: fmt.Errorf("unexpected inserted id type: %T", res.InsertedID),
+		}
 	}
 
 	return invoiceId, nil

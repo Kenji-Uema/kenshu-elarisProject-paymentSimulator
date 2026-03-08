@@ -5,11 +5,16 @@ import (
 )
 
 type CorruptedDataError struct {
+	Msg string
 	Err error
 }
 
 func (e CorruptedDataError) Error() string {
-	return fmt.Sprintf("database contains inconsistent cottage data: %v", e.Err)
+	return fmt.Sprintf("corrupted data error, %s: %v", e.Msg, e.Err)
+}
+
+func (e CorruptedDataError) Unwrap() error {
+	return e.Err
 }
 
 type AlreadyExistsErr struct {
@@ -20,12 +25,20 @@ func (e AlreadyExistsErr) Error() string {
 	return fmt.Sprintf("element already exists: %v", e.Err)
 }
 
+func (e AlreadyExistsErr) Unwrap() error {
+	return e.Err
+}
+
 type InvoiceNotFoundErr struct {
 	Err error
 }
 
 func (e InvoiceNotFoundErr) Error() string {
-	return fmt.Sprintf("receipt not found: %v", e.Err)
+	return fmt.Sprintf("invoice not found: %v", e.Err)
+}
+
+func (e InvoiceNotFoundErr) Unwrap() error {
+	return e.Err
 }
 
 type ReceiptNotFoundErr struct {
@@ -36,6 +49,10 @@ func (e ReceiptNotFoundErr) Error() string {
 	return fmt.Sprintf("receipt not found: %v", e.Err)
 }
 
+func (e ReceiptNotFoundErr) Unwrap() error {
+	return e.Err
+}
+
 type UnexpectedErr struct {
 	Msg string
 	Err error
@@ -43,4 +60,8 @@ type UnexpectedErr struct {
 
 func (e *UnexpectedErr) Error() string {
 	return fmt.Sprintf("unexpected error, %s: %v", e.Msg, e.Err)
+}
+
+func (e *UnexpectedErr) Unwrap() error {
+	return e.Err
 }

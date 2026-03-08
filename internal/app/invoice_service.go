@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -10,9 +11,13 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/appErrors"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/validationErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -57,34 +62,91 @@ func (s *invoiceService) StartInvoiceProcessing(ctx context.Context) {
 }
 
 func (s *invoiceService) processInvoiceDelivery(ctx context.Context, delivery amqp.Delivery) error {
-	var createInvoiceRequest dto.CreateInvoicePaymentRequest
-	if err := protojson.Unmarshal(delivery.Body, &createInvoiceRequest); err != nil {
-		_ = delivery.Nack(false, false)
+	createInvoiceRequest, err := s.unmarshalRequest(delivery)
+	if err != nil {
+		s.nack(ctx, delivery, false, false)
 		return err
 	}
 
-	now, err := s.clock.Now(ctx)
+	invoice, err := s.generateInvoiceDoc(ctx, createInvoiceRequest)
 	if err != nil {
+		s.nack(ctx, delivery, false, false)
 		return err
 	}
 
-	invoiceNumber, err := util.GenerateHumanFriendlyId("INV", *now)
+	invoiceID, err := s.saveInvoice(ctx, invoice)
 	if err != nil {
-		return err
-	}
-	invoice, err := document.NewInvoiceFromProtoMessage(&createInvoiceRequest, invoiceNumber, *now)
-	if err != nil {
-		_ = delivery.Nack(false, true)
-		return err
-	}
+		var alreadyExistsErr *appErrors.AlreadyExistsErr
+		if errors.As(err, &alreadyExistsErr) {
+			s.nack(ctx, delivery, false, false)
+			return err
+		}
 
-	invoiceID, err := s.invoiceRepo.Add(ctx, invoice)
-	if err != nil {
-		_ = delivery.Nack(false, true)
+		s.nack(ctx, delivery, false, true)
 		return err
 	}
 	slog.InfoContext(ctx, "invoice created", "invoice_id", invoiceID)
 
+	if err := s.publishPaymentConfirmation(ctx, invoice); err != nil {
+		var validationErr *validationErrors.ErrValidationConstrain
+		if errors.As(err, &validationErr) {
+			s.nack(ctx, delivery, false, false)
+			return err
+		}
+
+		s.nack(ctx, delivery, false, true)
+		return err
+	}
+
+	return delivery.Ack(false)
+}
+
+func (s *invoiceService) unmarshalRequest(delivery amqp.Delivery) (*dto.CreateInvoicePaymentRequest, error) {
+	var createInvoiceRequest dto.CreateInvoicePaymentRequest
+	if err := protojson.Unmarshal(delivery.Body, &createInvoiceRequest); err != nil {
+		return &dto.CreateInvoicePaymentRequest{}, &appErrors.CorruptedDataError{Msg: "could not unmarshal message to dto.CreateInvoicePaymentRequest", Err: err}
+	}
+	return &createInvoiceRequest, nil
+}
+
+func (s *invoiceService) generateInvoiceDoc(ctx context.Context, createInvoiceRequest *dto.CreateInvoicePaymentRequest) (document.Invoice, error) {
+	now, err := s.clock.Now(ctx)
+	if err != nil {
+		return document.Invoice{}, &appErrors.UnexpectedErr{Msg: "failed to get current time", Err: err}
+	}
+
+	invoiceNumber, err := util.GenerateHumanFriendlyId("INV", *now)
+	if err != nil {
+		return document.Invoice{}, &appErrors.UnexpectedErr{Msg: "failed to generate invoice number", Err: err}
+	}
+
+	invoice, err := document.NewInvoiceFromProtoMessage(createInvoiceRequest, invoiceNumber, *now)
+	if err != nil {
+		return document.Invoice{}, &appErrors.CorruptedDataError{Msg: "could not create invoice document from request", Err: err}
+	}
+
+	return invoice, nil
+}
+
+func (s *invoiceService) saveInvoice(ctx context.Context, invoice document.Invoice) (bson.ObjectID, error) {
+	invoiceID, err := s.invoiceRepo.Add(ctx, invoice)
+	if err != nil {
+		var alreadyExistsErr *dbErrors.AlreadyExistsErr
+		if errors.As(err, &alreadyExistsErr) {
+			return bson.ObjectID{}, &appErrors.AlreadyExistsErr{Err: err}
+		}
+
+		var unexpectedErr *dbErrors.UnexpectedErr
+		if errors.As(err, &unexpectedErr) {
+			return bson.ObjectID{}, &appErrors.UnexpectedErr{Msg: "failed to add invoice", Err: err}
+		}
+
+		return bson.ObjectID{}, &appErrors.UnexpectedErr{Msg: "failed to add invoice", Err: err}
+	}
+	return invoiceID, nil
+}
+
+func (s *invoiceService) publishPaymentConfirmation(ctx context.Context, invoice document.Invoice) error {
 	paymentRequest := &dto.PaymentRequest{
 		InvoiceNumber: invoice.InvoiceNumber,
 		Total: &dto.Money{
@@ -111,20 +173,23 @@ func (s *invoiceService) processInvoiceDelivery(ctx context.Context, delivery am
 		},
 	}
 
-	if err := validatePaymentRequest(paymentRequest); err != nil {
-		_ = delivery.Nack(false, false)
+	if err := s.validatePaymentRequest(paymentRequest); err != nil {
 		return err
 	}
-
 	if err := s.paymentProducer.Publish(ctx, paymentRequest, fmt.Sprintf("payment.%s.request", invoice.PayerId)); err != nil {
-		_ = delivery.Nack(false, true)
 		return err
 	}
 
-	return delivery.Ack(false)
+	return nil
 }
 
-func validatePaymentRequest(paymentRequest *dto.PaymentRequest) error {
+func (s *invoiceService) nack(ctx context.Context, delivery amqp.Delivery, multiple bool, requeue bool) {
+	if err := delivery.Nack(multiple, requeue); err != nil {
+		slog.ErrorContext(ctx, "nack delivery", "delivery_tag", delivery.DeliveryTag, "error", err)
+	}
+}
+
+func (s *invoiceService) validatePaymentRequest(paymentRequest *dto.PaymentRequest) error {
 	issuedAt := paymentRequest.GetIssuedAt()
 	expiresAt := paymentRequest.GetExpiresAt()
 	booking := paymentRequest.GetBooking()
