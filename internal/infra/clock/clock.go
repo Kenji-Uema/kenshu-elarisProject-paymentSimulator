@@ -1,4 +1,4 @@
-package grpc
+package clock
 
 import (
 	"context"
@@ -6,20 +6,19 @@ import (
 	"time"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
-	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/clock"
+	"github.com/Kenji-Uema/paymentSimulator/internal/port"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
-
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 type Clock struct {
 	conn   *grpc.ClientConn
-	client clock.ClockServiceClient
+	client ClockServiceClient
 }
 
-func NewClockEmu(cfg config.ClockEmuConfig) (*Clock, error) {
+func NewClock(cfg config.ClockEmuConfig) (port.Clock, error) {
 	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", cfg.ClockEmuGrpcUrl, cfg.ClockEmuGrpcPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()))
@@ -28,11 +27,7 @@ func NewClockEmu(cfg config.ClockEmuConfig) (*Clock, error) {
 		return nil, err
 	}
 
-	return &Clock{conn: conn, client: clock.NewClockServiceClient(conn)}, nil
-}
-
-func (e *Clock) Close() error {
-	return e.conn.Close()
+	return &Clock{conn: conn, client: NewClockServiceClient(conn)}, nil
 }
 
 func (e *Clock) Now(ctx context.Context) (*time.Time, error) {
@@ -43,4 +38,8 @@ func (e *Clock) Now(ctx context.Context) (*time.Time, error) {
 	createdTimestamp := createTime.Time.AsTime()
 
 	return &createdTimestamp, nil
+}
+
+func (e *Clock) Close() error {
+	return e.conn.Close()
 }

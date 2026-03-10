@@ -8,7 +8,7 @@ import "paymentSimulator/payment/paymentRequest.proto";
 import "paymentSimulator/payment/reissuePaymentRequest.proto";
 
 
-service PaymentRequestService {
+service PaymentReissueService {
   rpc Reissue(ReissuePaymentRequest) returns (PaymentRequest) {
     option (google.api.http) = {
       post: "/v1/payments/payment_request/reissue"

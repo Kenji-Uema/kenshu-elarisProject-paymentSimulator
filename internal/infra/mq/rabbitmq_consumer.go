@@ -12,34 +12,29 @@ import (
 )
 
 type rabbitmqConsumer struct {
-	*RabbitMqConnection
-	channel       *amqp.Channel
+	*RabbitMqChannel
 	queue         *amqp.Queue
 	consumeConfig config.ConsumeConfig
 }
 
 func NewRabbitmqConsumer(rabbitMqConnection *RabbitMqConnection, consumeConfig config.ConsumeConfig) (port.MqConsumer, error) {
 	rabbitmqConsumer := rabbitmqConsumer{
-		RabbitMqConnection: rabbitMqConnection,
-		consumeConfig:      consumeConfig,
+		RabbitMqChannel: NewRabbitMqChannel(rabbitMqConnection),
+		consumeConfig:   consumeConfig,
 	}
 
-	channel, err := rabbitMqConnection.Channel()
-	if err != nil {
+	if err := rabbitmqConsumer.openChannel(); err != nil {
 		return nil, err
 	}
-	rabbitmqConsumer.channel = channel
 
-	return &rabbitmqConsumer, err
+	return &rabbitmqConsumer, nil
 }
 
-func (c *rabbitmqConsumer) DeclareQueue(config config.QueueConfig) error {
+func (c *rabbitmqConsumer) DeclareQueue(ctx context.Context, config config.QueueConfig) error {
 	if c.channel == nil || c.channel.IsClosed() {
-		ch, err := c.Channel()
-		if err != nil {
-			return fmt.Errorf("open channel: %w", err)
+		if err := c.reopenChannel(ctx); err != nil {
+			return err
 		}
-		c.channel = ch
 	}
 
 	q, err := c.channel.QueueDeclare(
@@ -58,13 +53,11 @@ func (c *rabbitmqConsumer) DeclareQueue(config config.QueueConfig) error {
 	return nil
 }
 
-func (c *rabbitmqConsumer) BindQueue(config config.BindingConfig) error {
+func (c *rabbitmqConsumer) BindQueue(ctx context.Context, config config.BindingConfig) error {
 	if c.channel == nil || c.channel.IsClosed() {
-		ch, err := c.Channel()
-		if err != nil {
-			return fmt.Errorf("open channel: %w", err)
+		if err := c.reopenChannel(ctx); err != nil {
+			return err
 		}
-		c.channel = ch
 	}
 
 	if c.queue == nil {
@@ -96,14 +89,9 @@ func (c *rabbitmqConsumer) BindQueue(config config.BindingConfig) error {
 
 func (c *rabbitmqConsumer) Consume(ctx context.Context) (<-chan amqp.Delivery, error) {
 	if c.channel == nil {
-		slog.InfoContext(ctx, "channel not opened, opening channel")
-
-		ch, err := c.Channel()
-		if err != nil {
-			slog.ErrorContext(ctx, "failed to open channel", "error", err)
-			return nil, &mqErrors.UnexpectedErr{Msg: "unexpected error when reopening channel", Err: err}
+		if err := c.reopenChannel(ctx); err != nil {
+			return nil, err
 		}
-		c.channel = ch
 	}
 
 	deliveries, err := c.channel.ConsumeWithContext(
@@ -122,8 +110,4 @@ func (c *rabbitmqConsumer) Consume(ctx context.Context) (<-chan amqp.Delivery, e
 	}
 
 	return deliveries, nil
-}
-
-func (c *rabbitmqConsumer) CloseChannel() error {
-	return c.channel.Close()
 }

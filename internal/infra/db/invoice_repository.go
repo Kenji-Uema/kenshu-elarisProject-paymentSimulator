@@ -22,29 +22,53 @@ func NewInvoiceRepo(db *mongo.Database) port.InvoiceRepo {
 	return &invoiceRepo{collection: db.Collection("invoices")}
 }
 
-func (r invoiceRepo) Get(ctx context.Context, invoiceNumber string) (document.Invoice, error) {
+func (r invoiceRepo) FindByInvoiceNumber(ctx context.Context, invoiceNumber string) (document.Invoice, error) {
 	if err := validation.New().NotBlank("invoiceNumber", invoiceNumber).Validate(); err != nil {
 		return document.Invoice{}, err
 	}
 
 	filter := bson.M{"invoice_number": invoiceNumber}
 
-	var invoice document.Invoice
-	if err := r.collection.FindOne(ctx, filter).Decode(&invoice); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			slog.WarnContext(ctx, "invoice not found", "filter", filter)
-			return document.Invoice{}, &dbErrors.InvoiceNotFoundErr{Err: err}
-		}
+	invoice, err := r.find(ctx, filter)
+	if err != nil {
+		return document.Invoice{}, err
+	}
 
-		slog.ErrorContext(ctx, "failed to decode invoice", "error", err, "filter", filter)
-		return document.Invoice{}, &dbErrors.CorruptedDataErr{Err: err}
+	return invoice, nil
+}
+
+func (r invoiceRepo) FindByBookingNumberAndDocumentNumber(ctx context.Context, bookingNumber string, documentNumber string) (document.Invoice, error) {
+	if err := validation.New().
+		NotBlank("bookingNumber", bookingNumber).
+		NotBlank("documentNumber", documentNumber).Validate(); err != nil {
+
+		return document.Invoice{}, err
+	}
+
+	filter := bson.M{
+		"booking_id":            bookingNumber,
+		"payer.document_number": documentNumber,
+	}
+
+	invoice, err := r.find(ctx, filter)
+	if err != nil {
+		return invoice, err
 	}
 
 	return invoice, nil
 }
 
 func (r invoiceRepo) Add(ctx context.Context, invoice document.Invoice) (bson.ObjectID, error) {
-	if err := validation.New().NotNil("invoice", invoice).Validate(); err != nil {
+	if err := validation.New().
+		NotBlank("invoice.invoice_number", invoice.InvoiceNumber).
+		NotBlank("invoice.idempotency_id", invoice.IdempotencyId).
+		NotBlank("invoice.booking_id", invoice.BookingId).
+		NotBlank("invoice.payer_id", invoice.PayerId).
+		NotBlank("invoice.payer.document_number", invoice.Payer.DocumentNumber).
+		PositiveValue("invoice.total.amount", invoice.Total.Amount).
+		NotBlank("invoice.total.currency", invoice.Total.Currency).
+		NotZeroValue("invoice.issued_at", invoice.IssuedAt).
+		NotZeroValue("invoice.due_at", invoice.DueAt).Validate(); err != nil {
 		return bson.ObjectID{}, err
 	}
 
@@ -69,19 +93,7 @@ func (r invoiceRepo) Add(ctx context.Context, invoice document.Invoice) (bson.Ob
 	return invoiceId, nil
 }
 
-func (r invoiceRepo) FindByBookingNumberAndDocumentNumber(ctx context.Context, bookingNumber string, documentNumber string) (document.Invoice, error) {
-	if err := validation.New().
-		NotBlank("bookingNumber", bookingNumber).
-		NotBlank("documentNumber", documentNumber).Validate(); err != nil {
-
-		return document.Invoice{}, err
-	}
-
-	filter := bson.M{
-		"booking_id":            bookingNumber,
-		"payer.document_number": documentNumber,
-	}
-
+func (r invoiceRepo) find(ctx context.Context, filter bson.M) (document.Invoice, error) {
 	var invoice document.Invoice
 	if err := r.collection.FindOne(ctx, filter).Decode(&invoice); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -92,6 +104,5 @@ func (r invoiceRepo) FindByBookingNumberAndDocumentNumber(ctx context.Context, b
 		slog.ErrorContext(ctx, "failed to decode invoice", "error", err, "filter", filter)
 		return document.Invoice{}, &dbErrors.CorruptedDataErr{Err: err}
 	}
-
 	return invoice, nil
 }

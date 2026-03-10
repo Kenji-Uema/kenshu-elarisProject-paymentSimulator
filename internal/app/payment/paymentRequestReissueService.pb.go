@@ -27,7 +27,7 @@ var File_paymentSimulator_payment_service_paymentRequestReissueService_proto pro
 const file_paymentSimulator_payment_service_paymentRequestReissueService_proto_rawDesc = "" +
 	"\n" +
 	"CpaymentSimulator/payment/service/paymentRequestReissueService.proto\x12\x1bpaymentSimulator.payment.v1\x1a\x1cgoogle/api/annotations.proto\x1a-paymentSimulator/payment/paymentRequest.proto\x1a4paymentSimulator/payment/reissuePaymentRequest.proto2\xb5\x01\n" +
-	"\x15PaymentRequestService\x12\x9b\x01\n" +
+	"\x15PaymentReissueService\x12\x9b\x01\n" +
 	"\aReissue\x122.paymentSimulator.payment.v1.ReissuePaymentRequest\x1a+.paymentSimulator.payment.v1.PaymentRequest\"/\x82\xd3\xe4\x93\x02):\x01*\"$/v1/payments/payment_request/reissueBEZCgithub.com/Kenji-Uema/paymentSimulator/internal/app/payment;paymentb\x06proto3"
 
 var file_paymentSimulator_payment_service_paymentRequestReissueService_proto_goTypes = []any{
@@ -35,8 +35,8 @@ var file_paymentSimulator_payment_service_paymentRequestReissueService_proto_goT
 	(*dto.PaymentRequest)(nil),        // 1: paymentSimulator.payment.v1.PaymentRequest
 }
 var file_paymentSimulator_payment_service_paymentRequestReissueService_proto_depIdxs = []int32{
-	0, // 0: paymentSimulator.payment.v1.PaymentRequestService.Reissue:input_type -> paymentSimulator.payment.v1.ReissuePaymentRequest
-	1, // 1: paymentSimulator.payment.v1.PaymentRequestService.Reissue:output_type -> paymentSimulator.payment.v1.PaymentRequest
+	0, // 0: paymentSimulator.payment.v1.PaymentReissueService.Reissue:input_type -> paymentSimulator.payment.v1.ReissuePaymentRequest
+	1, // 1: paymentSimulator.payment.v1.PaymentReissueService.Reissue:output_type -> paymentSimulator.payment.v1.PaymentRequest
 	1, // [1:2] is the sub-list for method output_type
 	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name

@@ -18,8 +18,7 @@ import (
 )
 
 type rabbitmqProducer struct {
-	*RabbitMqConnection
-	channel       *amqp.Channel
+	*RabbitMqChannel
 	exchangeName  string
 	exchangeKind  string
 	publishConfig config.PublishConfig
@@ -27,15 +26,13 @@ type rabbitmqProducer struct {
 
 func NewRabbitmqProducer(rabbitmqConnection *RabbitMqConnection, publishConfig config.PublishConfig) (port.MqProducer, error) {
 	paymentProducer := rabbitmqProducer{
-		RabbitMqConnection: rabbitmqConnection,
-		publishConfig:      publishConfig,
+		RabbitMqChannel: NewRabbitMqChannel(rabbitmqConnection),
+		publishConfig:   publishConfig,
 	}
 
-	channel, err := rabbitmqConnection.Channel()
-	if err != nil {
+	if err := paymentProducer.openChannel(); err != nil {
 		return nil, err
 	}
-	paymentProducer.channel = channel
 
 	return &paymentProducer, nil
 }
@@ -49,11 +46,9 @@ func (p *rabbitmqProducer) DeclareExchange(config config.ExchangeConfig) error {
 	}
 
 	if p.channel == nil || p.channel.IsClosed() {
-		ch, err := p.Channel()
-		if err != nil {
-			return fmt.Errorf("open channel: %w", err)
+		if err := p.reopenChannel(context.Background()); err != nil {
+			return err
 		}
-		p.channel = ch
 	}
 
 	if err := p.channel.ExchangeDeclare(p.exchangeName, p.exchangeKind,
@@ -68,13 +63,9 @@ func (p *rabbitmqProducer) DeclareExchange(config config.ExchangeConfig) error {
 
 func (p *rabbitmqProducer) Publish(ctx context.Context, message proto.Message, routingKey string) error {
 	if p.channel == nil || p.channel.IsClosed() {
-		slog.Warn("channel is closed, opening a new one")
-		ch, err := p.Channel()
-		if err != nil {
-			slog.ErrorContext(ctx, "failed to open channel", "error", err)
-			return &mqErrors.UnexpectedErr{Msg: "unexpected error when reopening channel", Err: err}
+		if err := p.reopenChannel(ctx); err != nil {
+			return err
 		}
-		p.channel = ch
 	}
 
 	payload, err := protojson.Marshal(message)
@@ -111,8 +102,4 @@ func (p *rabbitmqProducer) Publish(ctx context.Context, message proto.Message, r
 	}
 
 	return nil
-}
-
-func (p *rabbitmqProducer) CloseChannel() error {
-	return p.channel.Close()
 }

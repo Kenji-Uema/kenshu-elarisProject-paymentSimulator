@@ -53,6 +53,19 @@ func (e ReceiptNotFoundErr) Unwrap() error {
 	return e.Err
 }
 
+type PublishErr struct {
+	Msg string
+	Err error
+}
+
+func (e PublishErr) Error() string {
+	return fmt.Sprintf("failed to publish message: %s, %v", e.Msg, e.Err)
+}
+
+func (e PublishErr) Unwrap() error {
+	return e.Err
+}
+
 type UnexpectedErr struct {
 	Msg string
 	Err error

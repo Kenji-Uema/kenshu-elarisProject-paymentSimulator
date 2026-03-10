@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package clockEmulator;
-option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/clock;clock";
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/infra/clock;clock";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";

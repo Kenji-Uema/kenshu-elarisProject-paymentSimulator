@@ -1,0 +1,30 @@
+[
+  {
+    "_id": { "$oid": "65f100000000000000000001" },
+    "receipt_number": "RCPT-2026-0001",
+    "invoice_number": "INV-2026-0001",
+    "card": {
+      "brand": "VISA",
+      "last4": "4242"
+    },
+    "processed_at": { "$date": "2026-03-03T11:15:00Z" }
+  },
+  {
+    "_id": { "$oid": "65f100000000000000000002" },
+    "receipt_number": "RCPT-2026-0002",
+    "invoice_number": "INV-2026-0002",
+    "card": {
+      "brand": "MASTERCARD",
+      "last4": "4444"
+    },
+    "processed_at": { "$date": "2026-03-04T16:45:00Z" }
+  },
+  {
+    "_invalid": true,
+    "_id": { "$oid": "65f300000000000000000001" },
+    "receipt_number": "RCPT-2026-CORRUPT1",
+    "invoice_number": "INV-2026-CORRUPT1",
+    "card": "invalid-card-shape",
+    "processed_at": { "$date": "2026-03-03T11:15:00Z" }
+  }
+]

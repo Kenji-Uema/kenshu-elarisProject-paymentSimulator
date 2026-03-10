@@ -58,24 +58,6 @@ func (c *RabbitMqConnection) Close() error {
 	return c.conn.Close()
 }
 
-func (c *RabbitMqConnection) Channel() (*amqp.Channel, error) {
-	conn, err := c.openConnection()
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := conn.Channel()
-	if err != nil && conn.IsClosed() {
-		conn, openErr := c.openConnection()
-		if openErr != nil {
-			return nil, openErr
-		}
-		return conn.Channel()
-	}
-
-	return ch, err
-}
-
 func (c *RabbitMqConnection) openConnection() (*amqp.Connection, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

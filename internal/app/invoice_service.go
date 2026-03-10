@@ -15,11 +15,9 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/validationErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
-	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type InvoiceService interface {
@@ -27,14 +25,14 @@ type InvoiceService interface {
 }
 
 type invoiceService struct {
-	clock               *grpc.Clock
+	clock               port.Clock
 	invoiceRepo         port.InvoiceRepo
 	invoiceConsumer     port.MqConsumer
 	paymentProducer     port.MqProducer
 	paymentMakingConfig config.PaymentMakingCardConfig
 }
 
-func NewInvoiceService(invoiceRepo port.InvoiceRepo, clock *grpc.Clock,
+func NewInvoiceService(invoiceRepo port.InvoiceRepo, clock port.Clock,
 	invoiceConsumer port.MqConsumer, paymentProducer port.MqProducer,
 	paymentMakingConfig config.PaymentMakingCardConfig) InvoiceService {
 
@@ -104,7 +102,7 @@ func (s *invoiceService) processInvoiceDelivery(ctx context.Context, delivery am
 func (s *invoiceService) unmarshalRequest(delivery amqp.Delivery) (*dto.CreateInvoicePaymentRequest, error) {
 	var createInvoiceRequest dto.CreateInvoicePaymentRequest
 	if err := protojson.Unmarshal(delivery.Body, &createInvoiceRequest); err != nil {
-		return &dto.CreateInvoicePaymentRequest{}, &appErrors.CorruptedDataError{Msg: "could not unmarshal message to dto.CreateInvoicePaymentRequest", Err: err}
+		return nil, &appErrors.CorruptedDataError{Msg: "could not unmarshal message to dto.CreateInvoicePaymentRequest", Err: err}
 	}
 	return &createInvoiceRequest, nil
 }
@@ -136,48 +134,22 @@ func (s *invoiceService) saveInvoice(ctx context.Context, invoice document.Invoi
 			return bson.ObjectID{}, &appErrors.AlreadyExistsErr{Err: err}
 		}
 
-		var unexpectedErr *dbErrors.UnexpectedErr
-		if errors.As(err, &unexpectedErr) {
-			return bson.ObjectID{}, &appErrors.UnexpectedErr{Msg: "failed to add invoice", Err: err}
-		}
-
 		return bson.ObjectID{}, &appErrors.UnexpectedErr{Msg: "failed to add invoice", Err: err}
 	}
 	return invoiceID, nil
 }
 
 func (s *invoiceService) publishPaymentRequest(ctx context.Context, invoice document.Invoice) error {
-	paymentRequest := &dto.PaymentRequest{
-		InvoiceNumber: invoice.InvoiceNumber,
-		Total: &dto.Money{
-			Amount:   invoice.Total.Amount,
-			Currency: invoice.Total.Currency,
-		},
-		IssuedAt:  timestamppb.New(invoice.IssuedAt),
-		ExpiresAt: timestamppb.New(invoice.DueAt),
-		Booking: &dto.BookingSummary{
-			CottageName:    invoice.Booking.CottageName,
-			Nights:         invoice.Booking.Nights,
-			NumberOfGuests: invoice.Booking.NumberOfGuests,
-		},
-		Payer: &dto.PayerSummary{
-			Name:  invoice.Payer.Name,
-			Email: invoice.Payer.Email,
-		},
-		Options: []*dto.PaymentOption{
-			{
-				Method:       dto.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD,
-				PaymentUrl:   fmt.Sprintf("%s/v1/payments/invoice/%s", s.paymentMakingConfig.Host, invoice.InvoiceNumber),
-				Instructions: "Please use the following url to pay for your booking",
-			},
-		},
-	}
+	paymentRequest := buildPaymentRequest(invoice, s.paymentMakingConfig.Host)
 
 	if err := s.validatePaymentRequest(paymentRequest); err != nil {
 		return err
 	}
-	if err := s.paymentProducer.Publish(ctx, paymentRequest, fmt.Sprintf("payment.%s.request", invoice.PayerId)); err != nil {
-		return err
+	routingKey := fmt.Sprintf("payment.%s.request", invoice.PayerId)
+	if err := s.paymentProducer.Publish(ctx, paymentRequest, routingKey); err != nil {
+		return &appErrors.PublishErr{
+			Msg: fmt.Sprintf("failed to publish paymentRequest; routingKey: %s; invoiceNumber: %s", routingKey, paymentRequest.InvoiceNumber),
+			Err: err}
 	}
 
 	return nil

@@ -36,7 +36,7 @@ var (
 	_ = metadata.Join
 )
 
-func request_PaymentRequestService_Reissue_0(ctx context.Context, marshaler runtime.Marshaler, client PaymentRequestServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_PaymentReissueService_Reissue_0(ctx context.Context, marshaler runtime.Marshaler, client PaymentReissueServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq dto.ReissuePaymentRequest
 		metadata runtime.ServerMetadata
@@ -51,7 +51,7 @@ func request_PaymentRequestService_Reissue_0(ctx context.Context, marshaler runt
 	return msg, metadata, err
 }
 
-func local_request_PaymentRequestService_Reissue_0(ctx context.Context, marshaler runtime.Marshaler, server PaymentRequestServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_PaymentReissueService_Reissue_0(ctx context.Context, marshaler runtime.Marshaler, server PaymentReissueServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq dto.ReissuePaymentRequest
 		metadata runtime.ServerMetadata
@@ -63,39 +63,39 @@ func local_request_PaymentRequestService_Reissue_0(ctx context.Context, marshale
 	return msg, metadata, err
 }
 
-// RegisterPaymentRequestServiceHandlerServer registers the http handlers for service PaymentRequestService to "mux".
-// UnaryRPC     :call PaymentRequestServiceServer directly.
+// RegisterPaymentReissueServiceHandlerServer registers the http handlers for service PaymentReissueService to "mux".
+// UnaryRPC     :call PaymentReissueServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterPaymentRequestServiceHandlerFromEndpoint instead.
+// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterPaymentReissueServiceHandlerFromEndpoint instead.
 // GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
-func RegisterPaymentRequestServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server PaymentRequestServiceServer) error {
-	mux.Handle(http.MethodPost, pattern_PaymentRequestService_Reissue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+func RegisterPaymentReissueServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server PaymentReissueServiceServer) error {
+	mux.Handle(http.MethodPost, pattern_PaymentReissueService_Reissue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/paymentSimulator.payment.v1.PaymentRequestService/Reissue", runtime.WithHTTPPathPattern("/v1/payments/payment_request/reissue"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/paymentSimulator.payment.v1.PaymentReissueService/Reissue", runtime.WithHTTPPathPattern("/v1/payments/payment_request/reissue"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_PaymentRequestService_Reissue_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_PaymentReissueService_Reissue_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_PaymentRequestService_Reissue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_PaymentReissueService_Reissue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 
 	return nil
 }
 
-// RegisterPaymentRequestServiceHandlerFromEndpoint is same as RegisterPaymentRequestServiceHandler but
+// RegisterPaymentReissueServiceHandlerFromEndpoint is same as RegisterPaymentReissueServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterPaymentRequestServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterPaymentReissueServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.NewClient(endpoint, opts...)
 	if err != nil {
 		return err
@@ -114,45 +114,45 @@ func RegisterPaymentRequestServiceHandlerFromEndpoint(ctx context.Context, mux *
 			}
 		}()
 	}()
-	return RegisterPaymentRequestServiceHandler(ctx, mux, conn)
+	return RegisterPaymentReissueServiceHandler(ctx, mux, conn)
 }
 
-// RegisterPaymentRequestServiceHandler registers the http handlers for service PaymentRequestService to "mux".
+// RegisterPaymentReissueServiceHandler registers the http handlers for service PaymentReissueService to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterPaymentRequestServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterPaymentRequestServiceHandlerClient(ctx, mux, NewPaymentRequestServiceClient(conn))
+func RegisterPaymentReissueServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterPaymentReissueServiceHandlerClient(ctx, mux, NewPaymentReissueServiceClient(conn))
 }
 
-// RegisterPaymentRequestServiceHandlerClient registers the http handlers for service PaymentRequestService
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "PaymentRequestServiceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "PaymentRequestServiceClient"
+// RegisterPaymentReissueServiceHandlerClient registers the http handlers for service PaymentReissueService
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "PaymentReissueServiceClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "PaymentReissueServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "PaymentRequestServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
-func RegisterPaymentRequestServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client PaymentRequestServiceClient) error {
-	mux.Handle(http.MethodPost, pattern_PaymentRequestService_Reissue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+// "PaymentReissueServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
+func RegisterPaymentReissueServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client PaymentReissueServiceClient) error {
+	mux.Handle(http.MethodPost, pattern_PaymentReissueService_Reissue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/paymentSimulator.payment.v1.PaymentRequestService/Reissue", runtime.WithHTTPPathPattern("/v1/payments/payment_request/reissue"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/paymentSimulator.payment.v1.PaymentReissueService/Reissue", runtime.WithHTTPPathPattern("/v1/payments/payment_request/reissue"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_PaymentRequestService_Reissue_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_PaymentReissueService_Reissue_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_PaymentRequestService_Reissue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_PaymentReissueService_Reissue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	return nil
 }
 
 var (
-	pattern_PaymentRequestService_Reissue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "payments", "payment_request", "reissue"}, ""))
+	pattern_PaymentReissueService_Reissue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "payments", "payment_request", "reissue"}, ""))
 )
 
 var (
-	forward_PaymentRequestService_Reissue_0 = runtime.ForwardResponseMessage
+	forward_PaymentReissueService_Reissue_0 = runtime.ForwardResponseMessage
 )

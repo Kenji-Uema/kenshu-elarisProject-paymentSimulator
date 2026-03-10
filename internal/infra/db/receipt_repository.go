@@ -14,15 +14,15 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-type receiptRepository struct {
+type receiptRepo struct {
 	collection *mongo.Collection
 }
 
 func NewReceiptRepo(db *mongo.Database) port.ReceiptRepo {
-	return &receiptRepository{collection: db.Collection("receipts")}
+	return &receiptRepo{collection: db.Collection("receipts")}
 }
 
-func (r receiptRepository) Get(ctx context.Context, id bson.ObjectID) (document.Receipt, error) {
+func (r receiptRepo) GetById(ctx context.Context, id bson.ObjectID) (document.Receipt, error) {
 	if err := validation.New().NotNilObjectID("id", id).Validate(); err != nil {
 		return document.Receipt{}, err
 	}
@@ -43,8 +43,13 @@ func (r receiptRepository) Get(ctx context.Context, id bson.ObjectID) (document.
 	return receipt, nil
 }
 
-func (r receiptRepository) Add(ctx context.Context, receipt document.Receipt) (bson.ObjectID, error) {
-	if err := validation.New().NotNil("receipt", receipt).Validate(); err != nil {
+func (r receiptRepo) Add(ctx context.Context, receipt document.Receipt) (bson.ObjectID, error) {
+	if err := validation.New().
+		NotBlank("receipt.receipt_number", receipt.ReceiptNumber).
+		NotBlank("receipt.invoice_number", receipt.InvoiceNumber).
+		NotBlank("receipt.card.brand", receipt.Card.Brand).
+		NotBlank("receipt.card.last4", receipt.Card.Last4).
+		NotZeroValue("receipt.processed_at", receipt.ProcessedAt).Validate(); err != nil {
 		return bson.ObjectID{}, err
 	}
 

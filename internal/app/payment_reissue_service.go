@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
@@ -13,16 +12,15 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type paymentReissueService struct {
-	payment.PaymentRequestServiceServer
+	payment.PaymentReissueServiceServer
 	invoiceRepo         port.InvoiceRepo
 	paymentMakingConfig config.PaymentMakingCardConfig
 }
 
-func NewPaymentReissueService(invoiceRepo port.InvoiceRepo, paymentMakingConfig config.PaymentMakingCardConfig) payment.PaymentRequestServiceServer {
+func NewPaymentReissueService(invoiceRepo port.InvoiceRepo, paymentMakingConfig config.PaymentMakingCardConfig) payment.PaymentReissueServiceServer {
 	return &paymentReissueService{
 		invoiceRepo:         invoiceRepo,
 		paymentMakingConfig: paymentMakingConfig,
@@ -52,31 +50,7 @@ func (p paymentReissueService) Reissue(ctx context.Context, r *dto.ReissuePaymen
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	paymentRequest := &dto.PaymentRequest{
-		InvoiceNumber: invoice.InvoiceNumber,
-		Total: &dto.Money{
-			Amount:   invoice.Total.Amount,
-			Currency: invoice.Total.Currency,
-		},
-		IssuedAt:  timestamppb.New(invoice.IssuedAt),
-		ExpiresAt: timestamppb.New(invoice.DueAt),
-		Booking: &dto.BookingSummary{
-			CottageName:    invoice.Booking.CottageName,
-			Nights:         invoice.Booking.Nights,
-			NumberOfGuests: invoice.Booking.NumberOfGuests,
-		},
-		Payer: &dto.PayerSummary{
-			Name:  invoice.Payer.Name,
-			Email: invoice.Payer.Email,
-		},
-		Options: []*dto.PaymentOption{
-			{
-				Method:       dto.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD,
-				PaymentUrl:   fmt.Sprintf("%s/v1/payments/invoice/%s", p.paymentMakingConfig.Host, invoice.InvoiceNumber),
-				Instructions: "Please use the following url to pay for your booking",
-			},
-		},
-	}
+	paymentRequest := buildPaymentRequest(invoice, p.paymentMakingConfig.Host)
 
 	return paymentRequest, nil
 }

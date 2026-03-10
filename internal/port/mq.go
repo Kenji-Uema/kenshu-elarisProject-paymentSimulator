@@ -15,8 +15,8 @@ type MqProducer interface {
 }
 
 type MqConsumer interface {
-	DeclareQueue(config config.QueueConfig) error
-	BindQueue(config config.BindingConfig) error
+	DeclareQueue(ctx context.Context, config config.QueueConfig) error
+	BindQueue(ctx context.Context, config config.BindingConfig) error
 	Consume(ctx context.Context) (<-chan amqp.Delivery, error)
 	CloseChannel() error
 }

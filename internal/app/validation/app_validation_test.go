@@ -1,50 +1,37 @@
 package validation
 
 import (
-	"log/slog"
 	"testing"
 	"time"
 )
 
-func TestValidator_Period(t *testing.T) {
+func TestValidator_ValidPrecedence(t *testing.T) {
 	now := time.Now().UTC()
-	tests := []struct {
-		name      string
-		start     time.Time
-		end       time.Time
-		shouldErr bool
-	}{
-		{
-			name:      "valid period",
-			start:     now,
-			end:       now.Add(24 * time.Hour),
-			shouldErr: false,
-		},
-		{
-			name:      "equal boundaries",
-			start:     now,
-			end:       now,
-			shouldErr: true,
-		},
-		{
-			name:      "start after end",
-			start:     now,
-			end:       now.Add(-24 * time.Hour),
-			shouldErr: true,
-		},
-	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := New().ValidPrecedence(tt.start, tt.end).Validate()
-			slog.Info("returned err", "err", err)
+	t.Run("valid precedence", func(t *testing.T) {
+		start := now
+		end := now.Add(24 * time.Hour)
 
-			if tt.shouldErr && err == nil {
-				t.Fatalf("expected validation error for start=%v end=%v, got nil", tt.start, tt.end)
-			}
-			if !tt.shouldErr && err != nil {
-				t.Fatalf("expected no error for start=%v end=%v, got %v", tt.start, tt.end, err)
-			}
-		})
-	}
+		err := New().ValidPrecedence(start, end).Validate()
+
+		if err != nil {
+			t.Fatalf("expected no error for start=%v end=%v, got %v", start, end, err)
+		}
+	})
+
+	t.Run("start and end equals", func(t *testing.T) {
+		start := now
+		end := now
+
+		err := New().ValidPrecedence(start, end).Validate()
+		assertValidationConstrainErr(t, err)
+	})
+
+	t.Run("end before start", func(t *testing.T) {
+		start := now
+		end := now.Add(-24 * time.Hour)
+
+		err := New().ValidPrecedence(start, end).Validate()
+		assertValidationConstrainErr(t, err)
+	})
 }

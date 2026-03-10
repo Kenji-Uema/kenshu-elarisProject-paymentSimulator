@@ -16,7 +16,6 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/appErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
-	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -27,13 +26,13 @@ import (
 type paymentMakingService struct {
 	payment.PaymentMakingServiceServer
 	config          config.PaymentMakingCardConfig
-	clock           *grpc.Clock
+	clock           port.Clock
 	invoiceRepo     port.InvoiceRepo
 	receiptRepo     port.ReceiptRepo
 	paymentProducer port.MqProducer
 }
 
-func NewPaymentMakingServer(config config.PaymentMakingCardConfig, clock *grpc.Clock,
+func NewPaymentMakingServer(config config.PaymentMakingCardConfig, clock port.Clock,
 	invoiceRepo port.InvoiceRepo, receiptRepo port.ReceiptRepo, producer port.MqProducer) payment.PaymentMakingServiceServer {
 	return &paymentMakingService{
 		config:          config,
@@ -76,11 +75,14 @@ func (s *paymentMakingService) PayWithCard(ctx context.Context, req *dto.PayWith
 	}
 
 	go func() {
-		if _, err := s.saveReceipt(ctx, resp); err != nil {
+		asyncCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if _, err := s.saveReceipt(asyncCtx, resp); err != nil {
 			slog.ErrorContext(ctx, "save receipt", "error", err)
 			return
 		}
-		if err := s.sendConfirmationMessage(ctx, now, resp); err != nil {
+		if err := s.sendConfirmationMessage(asyncCtx, now, resp); err != nil {
 			slog.ErrorContext(ctx, "send confirmation message", "error", err)
 			return
 		}
@@ -100,11 +102,12 @@ func (s *paymentMakingService) buildResponse(req *dto.PayWithCardRequest, status
 
 	receiptNumber, err := util.GenerateHumanFriendlyId("RCPT", now)
 	if err != nil {
-		return nil, err
+		return nil, &appErrors.UnexpectedErr{Msg: "failed to generate receipt number", Err: err}
 	}
 
 	return &dto.PayWithCardResponse{
 		ReceiptNumber: receiptNumber,
+		InvoiceNumber: req.GetInvoiceNumber(),
 		Status:        status,
 		ProcessedAt:   timestamppb.Now(),
 		Card:          cardSummary,
@@ -127,7 +130,7 @@ func (s *paymentMakingService) saveReceipt(ctx context.Context, resp *dto.PayWit
 
 		var corruptedDataErr *dbErrors.CorruptedDataErr
 		if errors.As(err, &corruptedDataErr) {
-			return document.Receipt{}, status.Error(codes.Internal, "database returned corrupted receipt data")
+			return document.Receipt{}, &appErrors.CorruptedDataError{Msg: "database returned corrupted receipt data", Err: err}
 		}
 
 		return document.Receipt{}, &appErrors.UnexpectedErr{Msg: "unexpect error happened while saving receipt", Err: err}
@@ -139,7 +142,7 @@ func (s *paymentMakingService) saveReceipt(ctx context.Context, resp *dto.PayWit
 }
 
 func (s *paymentMakingService) sendConfirmationMessage(ctx context.Context, now *time.Time, resp *dto.PayWithCardResponse) error {
-	invoice, err := s.invoiceRepo.Get(ctx, resp.GetInvoiceNumber())
+	invoice, err := s.invoiceRepo.FindByInvoiceNumber(ctx, resp.GetInvoiceNumber())
 	if err != nil {
 		var notFoundErr *dbErrors.InvoiceNotFoundErr
 		if errors.As(err, &notFoundErr) {

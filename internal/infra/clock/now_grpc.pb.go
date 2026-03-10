@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             (unknown)
-// source: clockEmu/now.proto
+// source: clock/now.proto
 
 package clock
 
@@ -118,5 +118,5 @@ var ClockService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "clockEmu/now.proto",
+	Metadata: "clock/now.proto",
 }
