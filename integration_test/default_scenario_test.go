@@ -79,20 +79,4 @@ var _ = Describe("default flow", Ordered, func() {
 			t.Fatalf("unexpected confirmation receipt number: got=%q want=%q", confirmation.GetReceiptNumber(), payResp.GetReceiptNumber())
 		}
 	})
-
-	It("reissue payment request", func() {
-		reissueBody := []byte(`{"bookingNumber":"booking-123","documentNumber":"11122233344"}`)
-		reissueRespBody := helpers.PostJSON(t, fmt.Sprintf("http://127.0.0.1:%d/v1/payments/payment_request/reissue", suiteAppPort), reissueBody)
-
-		var reissueResp dto.PaymentRequest
-		if err := protojson.Unmarshal(reissueRespBody, &reissueResp); err != nil {
-			t.Fatalf("unmarshal reissue response: %v", err)
-		}
-		if reissueResp.GetInvoiceNumber() != paymentReq.GetInvoiceNumber() {
-			t.Fatalf("unexpected reissued invoice number: got=%q want=%q", reissueResp.GetInvoiceNumber(), paymentReq.GetInvoiceNumber())
-		}
-		if reissueResp.GetPayer().GetEmail() != "john@example.com" {
-			t.Fatalf("unexpected reissued payer email: %q", reissueResp.GetPayer().GetEmail())
-		}
-	})
 })

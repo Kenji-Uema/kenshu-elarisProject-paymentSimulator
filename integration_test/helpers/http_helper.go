@@ -7,8 +7,13 @@ import (
 	"net/http"
 )
 
-func PostJSON(t TestReporter, endpoint string, body []byte) []byte {
+func PostJSON(t TestReporter, endpoint string, body []byte, expectedStatus ...int) []byte {
 	t.Helper()
+
+	wantStatus := http.StatusOK
+	if len(expectedStatus) > 0 {
+		wantStatus = expectedStatus[0]
+	}
 
 	resp, err := http.Post(endpoint, "application/json", bytes.NewReader(body))
 	if err != nil {
@@ -20,8 +25,8 @@ func PostJSON(t TestReporter, endpoint string, body []byte) []byte {
 	if err != nil {
 		t.Fatalf("read %s response: %v", endpoint, err)
 	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("unexpected status from %s: %d body=%s", endpoint, resp.StatusCode, string(respBody))
+	if resp.StatusCode != wantStatus {
+		t.Fatalf("unexpected status from %s: got=%d want=%d body=%s", endpoint, resp.StatusCode, wantStatus, string(respBody))
 	}
 
 	return respBody

@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	defaultInvoiceStatus = "pending"
+	InvoiceStatusPending = "pending"
+	InvoiceStatusPaid    = "paid"
 )
 
 type Invoice struct {
@@ -101,7 +102,7 @@ func NewInvoiceFromProtoMessage(invoiceProto *dto.CreateInvoicePaymentRequest, i
 
 	return Invoice{
 		InvoiceNumber: invoiceNumber,
-		Status:        defaultInvoiceStatus,
+		Status:        InvoiceStatusPending,
 		IssuedAt:      issuedAt.AsTime(),
 		DueAt:         dueAt.AsTime(),
 		IdempotencyId: invoiceProto.GetIdempotencyKey(),

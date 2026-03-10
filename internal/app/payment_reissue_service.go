@@ -3,9 +3,11 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
@@ -48,6 +50,9 @@ func (p paymentReissueService) Reissue(ctx context.Context, r *dto.ReissuePaymen
 		}
 
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if strings.EqualFold(invoice.Status, document.InvoiceStatusPaid) {
+		return nil, status.Error(codes.FailedPrecondition, "invoice is already paid")
 	}
 
 	paymentRequest := buildPaymentRequest(invoice, p.paymentMakingConfig.Host)

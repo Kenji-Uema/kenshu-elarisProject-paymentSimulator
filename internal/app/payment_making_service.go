@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/util"
@@ -63,9 +64,21 @@ func (s *paymentMakingService) PayWithCard(ctx context.Context, req *dto.PayWith
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	invoice, err := s.invoiceRepo.FindByInvoiceNumber(ctx, req.GetInvoiceNumber())
+	if err != nil {
+		return s.mapError(err)
+	}
+	if strings.EqualFold(invoice.Status, document.InvoiceStatusPaid) {
+		return nil, status.Error(codes.FailedPrecondition, "invoice is already paid")
+	}
+
 	if n := rand.Int(); n < s.config.FailChance {
 		slog.InfoContext(ctx, "payment failed; generated random number below threshold", "number", n, "chance", s.config.FailChance)
 		return s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_FAILED, *now)
+	}
+
+	if err := s.invoiceRepo.UpdateStatus(ctx, req.GetInvoiceNumber(), document.InvoiceStatusPaid, *now); err != nil {
+		return s.mapError(err)
 	}
 
 	resp, err := s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_SUCCEEDED, *now)
@@ -89,6 +102,20 @@ func (s *paymentMakingService) PayWithCard(ctx context.Context, req *dto.PayWith
 	}()
 
 	return resp, nil
+}
+
+func (s *paymentMakingService) mapError(err error) (*dto.PayWithCardResponse, error) {
+	var notFoundErr *dbErrors.InvoiceNotFoundErr
+	if errors.As(err, &notFoundErr) {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	var corruptedDataErr *dbErrors.CorruptedDataErr
+	if errors.As(err, &corruptedDataErr) {
+		return nil, status.Error(codes.Internal, "database returned corrupted invoice data")
+	}
+
+	return nil, status.Error(codes.Internal, err.Error())
 }
 
 func (s *paymentMakingService) buildResponse(req *dto.PayWithCardRequest, status dto.PaymentStatus, now time.Time) (*dto.PayWithCardResponse, error) {

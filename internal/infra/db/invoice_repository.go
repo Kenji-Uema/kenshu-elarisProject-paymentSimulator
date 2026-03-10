@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
@@ -91,6 +92,34 @@ func (r invoiceRepo) Add(ctx context.Context, invoice document.Invoice) (bson.Ob
 	}
 
 	return invoiceId, nil
+}
+
+func (r invoiceRepo) UpdateStatus(ctx context.Context, invoiceNumber string, status string, updatedAt time.Time) error {
+	if err := validation.New().
+		NotBlank("invoiceNumber", invoiceNumber).
+		NotBlank("status", status).
+		NotZeroValue("updatedAt", updatedAt).Validate(); err != nil {
+		return err
+	}
+
+	filter := bson.M{"invoice_number": invoiceNumber}
+	update := bson.M{
+		"$set": bson.M{
+			"status":     status,
+			"updated_at": updatedAt,
+		},
+	}
+
+	res, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return &dbErrors.UnexpectedErr{Msg: "failed to update invoice status", Err: err}
+	}
+
+	if res.MatchedCount == 0 {
+		return &dbErrors.InvoiceNotFoundErr{Err: mongo.ErrNoDocuments}
+	}
+
+	return nil
 }
 
 func (r invoiceRepo) find(ctx context.Context, filter bson.M) (document.Invoice, error) {

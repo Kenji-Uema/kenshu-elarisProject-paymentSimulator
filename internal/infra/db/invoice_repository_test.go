@@ -236,3 +236,56 @@ func TestInvoiceRepo_Add(t *testing.T) {
 		})
 	})
 }
+
+func TestInvoiceRepo_UpdateStatus(t *testing.T) {
+	setupAndRun("TestInvoiceRepo_UpdateStatus", t, func(t *testing.T, invoiceCollection *mongo.Collection, _ *mongo.Collection) {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		repo := &invoiceRepo{collection: invoiceCollection}
+
+		t.Run("updates status and updated_at for existing invoice", func(t *testing.T) {
+			updatedAt := time.Date(2026, time.March, 10, 8, 30, 0, 0, time.UTC)
+
+			err := repo.UpdateStatus(ctx, "INV-2026-0001", "paid", updatedAt)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+
+			got, err := repo.FindByInvoiceNumber(ctx, "INV-2026-0001")
+			if err != nil {
+				t.Fatalf("find updated invoice: %v", err)
+			}
+			if got.Status != "paid" {
+				t.Fatalf("expected status paid, got %q", got.Status)
+			}
+			if !got.UpdatedAt.Equal(updatedAt) {
+				t.Fatalf("expected updated_at %v, got %v", updatedAt, got.UpdatedAt)
+			}
+		})
+
+		t.Run("returns validation error for blank invoice number", func(t *testing.T) {
+			err := repo.UpdateStatus(ctx, " ", "paid", time.Now())
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+
+			var validationErr *validationErrors.ErrValidationConstrain
+			if !errors.As(err, &validationErr) {
+				t.Fatalf("expected *validationErrors.ErrValidationConstrain, got %T", err)
+			}
+		})
+
+		t.Run("returns not found when invoice does not exist", func(t *testing.T) {
+			err := repo.UpdateStatus(ctx, "INV-DOES-NOT-EXIST", "paid", time.Now())
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+
+			var notFoundErr *dbErrors.InvoiceNotFoundErr
+			if !errors.As(err, &notFoundErr) {
+				t.Fatalf("expected *dbErrors.InvoiceNotFoundErr, got %T", err)
+			}
+		})
+	})
+}

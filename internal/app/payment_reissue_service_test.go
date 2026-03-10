@@ -110,6 +110,28 @@ func TestPaymentReissueService_Reissue(t *testing.T) {
 			t.Fatalf("expected FindByBookingNumberAndDocumentNumber call count 1, got %d", repo.FindCallCount)
 		}
 	})
+
+	t.Run("already paid invoice does not reissue payment request", func(t *testing.T) {
+		invoice := validInvoiceForReissue()
+		invoice.Status = "paid"
+		repo := &dbfakes.FakeInvoiceRepo{
+			FindByBookingNumberAndDocumentNumberFn: func(context.Context, string, string) (document.Invoice, error) {
+				return invoice, nil
+			},
+		}
+		service := paymentReissueService{
+			invoiceRepo:         repo,
+			paymentMakingConfig: config.PaymentMakingCardConfig{Host: "https://pay.local"},
+		}
+
+		_, err := service.Reissue(context.Background(), validReissueRequest())
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if status.Code(err) != codes.FailedPrecondition {
+			t.Fatalf("expected FailedPrecondition, got %v", status.Code(err))
+		}
+	})
 }
 
 func validReissueRequest() *dto.ReissuePaymentRequest {
@@ -123,6 +145,7 @@ func validInvoiceForReissue() document.Invoice {
 	now := time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC)
 	return document.Invoice{
 		InvoiceNumber: "INV-20260309-ABC123",
+		Status:        "pending",
 		IssuedAt:      now,
 		DueAt:         now.Add(24 * time.Hour),
 		Total:         document.Money{Amount: 15000, Currency: "USD"},

@@ -28,6 +28,13 @@ var _ = BeforeSuite(func() {
 	DeferCleanup(cancel)
 
 	suiteMongoHost, suiteRabbitHost, suiteRabbitPort = helpers.StartContainers(ctx)
+	helpers.SeedMongoFromFixtures(
+		t,
+		suiteMongoHost,
+		"test_db",
+		"../test_data/invoices_fixture.json",
+		"../test_data/receipts_fixture.json",
+	)
 	suiteClockHost, suiteClockPort = helpers.StartClockEmulator(t)
 
 	suiteAppPort = helpers.FreeTCPPort(t)

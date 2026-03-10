@@ -2,6 +2,7 @@ package fakes
 
 import (
 	"context"
+	"time"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
@@ -14,15 +15,20 @@ type FakeInvoiceRepo struct {
 	GetFn                                  func(ctx context.Context, invoiceNumber string) (document.Invoice, error)
 	AddFn                                  func(ctx context.Context, invoice document.Invoice) (bson.ObjectID, error)
 	FindByBookingNumberAndDocumentNumberFn func(ctx context.Context, bookingNumber string, documentNumber string) (document.Invoice, error)
+	UpdateStatusFn                         func(ctx context.Context, invoiceNumber string, status string, updatedAt time.Time) error
 
-	GetCallCount  int
-	AddCallCount  int
-	FindCallCount int
+	GetCallCount          int
+	AddCallCount          int
+	FindCallCount         int
+	UpdateStatusCallCount int
 
 	LastGetInvoiceNumber   string
 	LastAddedInvoice       document.Invoice
 	LastFindBookingNumber  string
 	LastFindDocumentNumber string
+	LastUpdatedInvoice     string
+	LastUpdatedStatus      string
+	LastUpdatedAt          time.Time
 }
 
 func (f *FakeInvoiceRepo) FindByInvoiceNumber(ctx context.Context, invoiceNumber string) (document.Invoice, error) {
@@ -57,4 +63,17 @@ func (f *FakeInvoiceRepo) FindByBookingNumberAndDocumentNumber(ctx context.Conte
 	}
 
 	return document.Invoice{}, nil
+}
+
+func (f *FakeInvoiceRepo) UpdateStatus(ctx context.Context, invoiceNumber string, status string, updatedAt time.Time) error {
+	f.UpdateStatusCallCount++
+	f.LastUpdatedInvoice = invoiceNumber
+	f.LastUpdatedStatus = status
+	f.LastUpdatedAt = updatedAt
+
+	if f.UpdateStatusFn != nil {
+		return f.UpdateStatusFn(ctx, invoiceNumber, status, updatedAt)
+	}
+
+	return nil
 }

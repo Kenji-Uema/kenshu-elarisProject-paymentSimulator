@@ -235,6 +235,9 @@ func TestPaymentMakingService_PayWithCard(t *testing.T) {
 		s := &paymentMakingService{
 			config: config.PaymentMakingCardConfig{FailChance: int(^uint(0) >> 1)},
 			clock:  &clockfakes.FakeClock{NowFn: func(context.Context) (*time.Time, error) { return &now, nil }},
+			invoiceRepo: &dbfakes.FakeInvoiceRepo{GetFn: func(context.Context, string) (document.Invoice, error) {
+				return validInvoiceForConfirmation(), nil
+			}},
 		}
 
 		resp, err := s.PayWithCard(context.Background(), validPayWithCardRequest())
@@ -248,11 +251,14 @@ func TestPaymentMakingService_PayWithCard(t *testing.T) {
 
 	t.Run("success branch returns succeeded status", func(t *testing.T) {
 		now := time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC)
+		invoiceRepo := &dbfakes.FakeInvoiceRepo{GetFn: func(context.Context, string) (document.Invoice, error) {
+			return validInvoiceForConfirmation(), nil
+		}}
 		s := &paymentMakingService{
 			config:          config.PaymentMakingCardConfig{FailChance: 0},
 			clock:           &clockfakes.FakeClock{NowFn: func(context.Context) (*time.Time, error) { return &now, nil }},
 			receiptRepo:     &dbfakes.FakeReceiptRepo{},
-			invoiceRepo:     &dbfakes.FakeInvoiceRepo{},
+			invoiceRepo:     invoiceRepo,
 			paymentProducer: &mqfakes.FakeMqProducer{},
 		}
 
@@ -262,6 +268,37 @@ func TestPaymentMakingService_PayWithCard(t *testing.T) {
 		}
 		if resp.GetStatus() != dto.PaymentStatus_PAYMENT_STATUS_SUCCEEDED {
 			t.Fatalf("expected SUCCEEDED status, got %v", resp.GetStatus())
+		}
+		if invoiceRepo.UpdateStatusCallCount != 1 {
+			t.Fatalf("expected invoice status update call count 1, got %d", invoiceRepo.UpdateStatusCallCount)
+		}
+		if invoiceRepo.LastUpdatedStatus != "paid" {
+			t.Fatalf("expected invoice status to be updated to paid, got %q", invoiceRepo.LastUpdatedStatus)
+		}
+	})
+
+	t.Run("already paid invoice returns failed precondition", func(t *testing.T) {
+		now := time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC)
+		invoiceRepo := &dbfakes.FakeInvoiceRepo{GetFn: func(context.Context, string) (document.Invoice, error) {
+			invoice := validInvoiceForConfirmation()
+			invoice.Status = "paid"
+			return invoice, nil
+		}}
+		s := &paymentMakingService{
+			config:      config.PaymentMakingCardConfig{FailChance: 0},
+			clock:       &clockfakes.FakeClock{NowFn: func(context.Context) (*time.Time, error) { return &now, nil }},
+			invoiceRepo: invoiceRepo,
+		}
+
+		_, err := s.PayWithCard(context.Background(), validPayWithCardRequest())
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if status.Code(err) != codes.FailedPrecondition {
+			t.Fatalf("expected FailedPrecondition, got %v", status.Code(err))
+		}
+		if invoiceRepo.UpdateStatusCallCount != 0 {
+			t.Fatalf("expected no invoice status update, got %d", invoiceRepo.UpdateStatusCallCount)
 		}
 	})
 }
