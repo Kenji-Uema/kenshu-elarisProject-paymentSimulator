@@ -43,7 +43,7 @@ func (c *rabbitmqConsumer) DeclareQueue(ctx context.Context, config config.Queue
 		config.AutoDelete,
 		config.Exclusive,
 		config.NoWait,
-		config.Args,
+		nil,
 	)
 	if err != nil {
 		return fmt.Errorf("declare queue %q: %w", config.Name, err)
@@ -73,7 +73,7 @@ func (c *rabbitmqConsumer) BindQueue(ctx context.Context, config config.BindingC
 		config.RoutingKey,
 		config.ExchangeName,
 		config.NoWait,
-		config.Args,
+		nil,
 	); err != nil {
 		return fmt.Errorf(
 			"bind queue %q to exchange %q with routing key %q: %w",
@@ -102,7 +102,7 @@ func (c *rabbitmqConsumer) Consume(ctx context.Context) (<-chan amqp.Delivery, e
 		c.consumeConfig.Exclusive,
 		c.consumeConfig.NoLocal,
 		c.consumeConfig.NoWait,
-		c.consumeConfig.Args,
+		nil,
 	)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to consume queue", "error", err)

@@ -53,7 +53,7 @@ func (p *rabbitmqProducer) DeclareExchange(config config.ExchangeConfig) error {
 
 	if err := p.channel.ExchangeDeclare(p.exchangeName, p.exchangeKind,
 		config.Durable, config.AutoDelete, config.Internal,
-		config.NoWait, config.Args); err != nil {
+		config.NoWait, nil); err != nil {
 
 		return fmt.Errorf("declare exchange %q: %w", config.Name, err)
 	}

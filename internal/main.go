@@ -75,6 +75,10 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to declare queue: %w", err)
 	}
+	err = invoiceConsumer.BindQueue(ctx, configs.InvoiceConsumerConfig.Binding)
+	if err != nil {
+		return fmt.Errorf("failed to bind invoice queue: %w", err)
+	}
 	clockEmu, err := clock.NewClock(configs.ClockEmuConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create clock emu: %w", err)

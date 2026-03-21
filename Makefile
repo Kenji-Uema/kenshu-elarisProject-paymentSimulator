@@ -1,5 +1,5 @@
 build: generate
-	go build .
+	GOCACHE=$(PWD)/.gocache GOMODCACHE=$(PWD)/.gomodcache go build -o $(PWD)/bin/payment-simulator ./internal
 
 test:
 	GOCACHE=$(PWD)/.gocache GOMODCACHE=$(PWD)/.gomodcache go test ./...
