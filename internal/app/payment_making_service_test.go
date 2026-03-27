@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/validationErrors"
 	clockfakes "github.com/Kenji-Uema/paymentSimulator/internal/infra/clock/fakes"
 	dbfakes "github.com/Kenji-Uema/paymentSimulator/internal/infra/db/fakes"
@@ -35,6 +34,54 @@ func TestPaymentMakingService_BuildResponse(t *testing.T) {
 	if resp == (&dto.PayWithCardResponse{}) {
 		t.Fatal("expected non-empty response")
 	}
+}
+
+func TestNewPaymentMakingServer(t *testing.T) {
+	t.Run("invalid dependencies", func(t *testing.T) {
+		_, err := NewPaymentMakingServer(0, nil, nil, nil, nil)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var validationErr *validationErrors.ErrValidationConstrain
+		if !errors.As(err, &validationErr) {
+			t.Fatalf("expected *validationErrors.ErrValidationConstrain, got %T", err)
+		}
+	})
+
+	t.Run("negative fail chance", func(t *testing.T) {
+		_, err := NewPaymentMakingServer(
+			-1,
+			&clockfakes.FakeClock{},
+			&dbfakes.FakeInvoiceRepo{},
+			&dbfakes.FakeReceiptRepo{},
+			&mqfakes.FakeMqProducer{},
+		)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var validationErr *validationErrors.ErrValidationConstrain
+		if !errors.As(err, &validationErr) {
+			t.Fatalf("expected *validationErrors.ErrValidationConstrain, got %T", err)
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		service, err := NewPaymentMakingServer(
+			0,
+			&clockfakes.FakeClock{},
+			&dbfakes.FakeInvoiceRepo{},
+			&dbfakes.FakeReceiptRepo{},
+			&mqfakes.FakeMqProducer{},
+		)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if service == nil {
+			t.Fatal("expected non-nil service")
+		}
+	})
 }
 
 func TestPaymentMakingService_SaveReceipt(t *testing.T) {
@@ -233,8 +280,8 @@ func TestPaymentMakingService_PayWithCard(t *testing.T) {
 	t.Run("failure chance branch returns failed status", func(t *testing.T) {
 		now := time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC)
 		s := &paymentMakingService{
-			config: config.PaymentMakingCardConfig{FailChance: int(^uint(0) >> 1)},
-			clock:  &clockfakes.FakeClock{NowFn: func(context.Context) (*time.Time, error) { return &now, nil }},
+			failChance: int(^uint(0) >> 1),
+			clock:      &clockfakes.FakeClock{NowFn: func(context.Context) (*time.Time, error) { return &now, nil }},
 			invoiceRepo: &dbfakes.FakeInvoiceRepo{GetFn: func(context.Context, string) (document.Invoice, error) {
 				return validInvoiceForConfirmation(), nil
 			}},
@@ -255,7 +302,7 @@ func TestPaymentMakingService_PayWithCard(t *testing.T) {
 			return validInvoiceForConfirmation(), nil
 		}}
 		s := &paymentMakingService{
-			config:          config.PaymentMakingCardConfig{FailChance: 0},
+			failChance:      0,
 			clock:           &clockfakes.FakeClock{NowFn: func(context.Context) (*time.Time, error) { return &now, nil }},
 			receiptRepo:     &dbfakes.FakeReceiptRepo{},
 			invoiceRepo:     invoiceRepo,
@@ -285,7 +332,7 @@ func TestPaymentMakingService_PayWithCard(t *testing.T) {
 			return invoice, nil
 		}}
 		s := &paymentMakingService{
-			config:      config.PaymentMakingCardConfig{FailChance: 0},
+			failChance:  0,
 			clock:       &clockfakes.FakeClock{NowFn: func(context.Context) (*time.Time, error) { return &now, nil }},
 			invoiceRepo: invoiceRepo,
 		}

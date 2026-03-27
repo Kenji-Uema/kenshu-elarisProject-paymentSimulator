@@ -18,8 +18,13 @@ type rabbitmqConsumer struct {
 }
 
 func NewRabbitmqConsumer(rabbitMqConnection *RabbitMqConnection, consumeConfig config.ConsumeConfig) (port.MqConsumer, error) {
+	channel, err := NewRabbitMqChannel(rabbitMqConnection)
+	if err != nil {
+		return nil, err
+	}
+
 	rabbitmqConsumer := rabbitmqConsumer{
-		RabbitMqChannel: NewRabbitMqChannel(rabbitMqConnection),
+		RabbitMqChannel: channel,
 		consumeConfig:   consumeConfig,
 	}
 

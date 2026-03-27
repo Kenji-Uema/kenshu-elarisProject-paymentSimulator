@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
-	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
@@ -18,15 +17,22 @@ import (
 
 type paymentReissueService struct {
 	payment.PaymentReissueServiceServer
-	invoiceRepo         port.InvoiceRepo
-	paymentMakingConfig config.PaymentMakingCardConfig
+	invoiceRepo port.InvoiceRepo
+	paymentHost string
 }
 
-func NewPaymentReissueService(invoiceRepo port.InvoiceRepo, paymentMakingConfig config.PaymentMakingCardConfig) payment.PaymentReissueServiceServer {
-	return &paymentReissueService{
-		invoiceRepo:         invoiceRepo,
-		paymentMakingConfig: paymentMakingConfig,
+func NewPaymentReissueService(invoiceRepo port.InvoiceRepo, paymentHost string) (payment.PaymentReissueServiceServer, error) {
+	if err := validation.New().
+		NotNil("invoice_repo", invoiceRepo).
+		NotBlank("payment_host", paymentHost).
+		Validate(); err != nil {
+		return nil, err
 	}
+
+	return &paymentReissueService{
+		invoiceRepo: invoiceRepo,
+		paymentHost: paymentHost,
+	}, nil
 }
 
 func (p paymentReissueService) Reissue(ctx context.Context, r *dto.ReissuePaymentRequest) (*dto.PaymentRequest, error) {
@@ -55,7 +61,7 @@ func (p paymentReissueService) Reissue(ctx context.Context, r *dto.ReissuePaymen
 		return nil, status.Error(codes.FailedPrecondition, "invoice is already paid")
 	}
 
-	paymentRequest := buildPaymentRequest(invoice, p.paymentMakingConfig.Host)
+	paymentRequest := buildPaymentRequest(invoice, p.paymentHost)
 
 	return paymentRequest, nil
 }

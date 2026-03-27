@@ -189,6 +189,46 @@ func TestInvoiceRepo_Add(t *testing.T) {
 			}
 		})
 
+		t.Run("returns validation error when invoice status is invalid", func(t *testing.T) {
+			now := time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC)
+			invalid := document.Invoice{
+				InvoiceNumber: "INV-2026-BADSTATUS",
+				Status:        "archived",
+				IssuedAt:      now,
+				DueAt:         now.Add(24 * time.Hour),
+				IdempotencyId: "idem-bad-status",
+				BookingId:     "booking-bad-status",
+				PayerId:       "payer-bad-status",
+				Payer: document.Payer{
+					Name:           "Bad Status",
+					Email:          "bad.status@example.com",
+					DocumentNumber: "12312312312",
+					BillingAddress: "Status St",
+				},
+				Booking: document.BookingSnapshot{
+					CottageName:    "Status Cottage",
+					Nights:         2,
+					NumberOfGuests: 2,
+					ValuePerNight:  document.Money{Amount: 10000, Currency: "USD"},
+				},
+				Total:         document.Money{Amount: 20000, Currency: "USD"},
+				TaxTotal:      document.Money{Amount: 2000, Currency: "USD"},
+				DiscountTotal: document.Money{Amount: 0, Currency: "USD"},
+				CreatedAt:     now,
+				UpdatedAt:     now,
+			}
+
+			_, err := repo.Add(ctx, invalid)
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+
+			var validationErr *validationErrors.ErrValidationConstrain
+			if !errors.As(err, &validationErr) {
+				t.Fatalf("expected *validationErrors.ErrValidationConstrain, got %T", err)
+			}
+		})
+
 		t.Run("returns already exists when _id is duplicated", func(t *testing.T) {
 			dupID, err := bson.ObjectIDFromHex("65f000000000000000000001")
 			if err != nil {
@@ -266,6 +306,18 @@ func TestInvoiceRepo_UpdateStatus(t *testing.T) {
 
 		t.Run("returns validation error for blank invoice number", func(t *testing.T) {
 			err := repo.UpdateStatus(ctx, " ", "paid", time.Now())
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+
+			var validationErr *validationErrors.ErrValidationConstrain
+			if !errors.As(err, &validationErr) {
+				t.Fatalf("expected *validationErrors.ErrValidationConstrain, got %T", err)
+			}
+		})
+
+		t.Run("returns validation error for invalid status", func(t *testing.T) {
+			err := repo.UpdateStatus(ctx, "INV-2026-0001", "archived", time.Now())
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}

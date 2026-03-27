@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -25,6 +26,15 @@ type RabbitMqConnection struct {
 }
 
 func NewRabbitMqConnection(ctx context.Context, cfg config.RabbitMqConfig) (*RabbitMqConnection, error) {
+	if err := validation.New().
+		NotBlank("rabbitmq.username", string(cfg.Username)).
+		NotBlank("rabbitmq.password", string(cfg.Password)).
+		NotBlank("rabbitmq.host", cfg.Host).
+		PositiveValue("rabbitmq.port", cfg.Port).
+		Validate(); err != nil {
+		return nil, err
+	}
+
 	c := &RabbitMqConnection{cfg: cfg}
 	if err := c.reconnectLocked(); err != nil {
 		return nil, err

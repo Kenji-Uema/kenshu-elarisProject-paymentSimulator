@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -18,8 +19,15 @@ type Clock struct {
 	client ClockServiceClient
 }
 
-func NewClock(cfg config.ClockEmuConfig) (port.Clock, error) {
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", cfg.ClockEmuGrpcUrl, cfg.ClockEmuGrpcPort),
+func NewClock(config config.Services) (port.Clock, error) {
+	if err := validation.New().
+		NotBlank("clock.grpc_host", config.ClockSimulatorConfig.GrpcHost).
+		PositiveValue("clock.grpc_port", config.ClockSimulatorConfig.GrpcPort).
+		Validate(); err != nil {
+		return nil, err
+	}
+
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", config.ClockSimulatorConfig.GrpcHost, config.ClockSimulatorConfig.GrpcPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()))
 

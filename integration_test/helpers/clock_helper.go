@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/infra/clock"
 	. "github.com/onsi/ginkgo/v2"
 	"google.golang.org/grpc"
@@ -15,8 +16,8 @@ type fakeClockServer struct {
 	clock.UnimplementedClockServiceServer
 }
 
-func (fakeClockServer) Now(context.Context, *emptypb.Empty) (*clock.NowResponse, error) {
-	return &clock.NowResponse{Time: timestamppb.Now()}, nil
+func (fakeClockServer) Now(context.Context, *emptypb.Empty) (*dto.TimeEvent, error) {
+	return &dto.TimeEvent{Time: timestamppb.Now()}, nil
 }
 
 func StartClockEmulator(t FullGinkgoTInterface) (clockHost string, clockPort int) {

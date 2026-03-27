@@ -25,8 +25,13 @@ type rabbitmqProducer struct {
 }
 
 func NewRabbitmqProducer(rabbitmqConnection *RabbitMqConnection, publishConfig config.PublishConfig) (port.MqProducer, error) {
+	channel, err := NewRabbitMqChannel(rabbitmqConnection)
+	if err != nil {
+		return nil, err
+	}
+
 	paymentProducer := rabbitmqProducer{
-		RabbitMqChannel: NewRabbitMqChannel(rabbitmqConnection),
+		RabbitMqChannel: channel,
 		publishConfig:   publishConfig,
 	}
 

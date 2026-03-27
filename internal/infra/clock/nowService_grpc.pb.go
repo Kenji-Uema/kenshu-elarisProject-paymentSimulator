@@ -2,12 +2,13 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             (unknown)
-// source: clock/now.proto
+// source: clock/nowService.proto
 
 package clock
 
 import (
 	context "context"
+	dto "github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -20,14 +21,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ClockService_Now_FullMethodName = "/clockEmulator.ClockService/Now"
+	ClockService_Now_FullMethodName = "/clock.ClockService/Now"
 )
 
 // ClockServiceClient is the client API for ClockService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ClockServiceClient interface {
-	Now(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*NowResponse, error)
+	Now(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*dto.TimeEvent, error)
 }
 
 type clockServiceClient struct {
@@ -38,9 +39,9 @@ func NewClockServiceClient(cc grpc.ClientConnInterface) ClockServiceClient {
 	return &clockServiceClient{cc}
 }
 
-func (c *clockServiceClient) Now(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*NowResponse, error) {
+func (c *clockServiceClient) Now(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*dto.TimeEvent, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(NowResponse)
+	out := new(dto.TimeEvent)
 	err := c.cc.Invoke(ctx, ClockService_Now_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -52,7 +53,7 @@ func (c *clockServiceClient) Now(ctx context.Context, in *emptypb.Empty, opts ..
 // All implementations must embed UnimplementedClockServiceServer
 // for forward compatibility.
 type ClockServiceServer interface {
-	Now(context.Context, *emptypb.Empty) (*NowResponse, error)
+	Now(context.Context, *emptypb.Empty) (*dto.TimeEvent, error)
 	mustEmbedUnimplementedClockServiceServer()
 }
 
@@ -63,7 +64,7 @@ type ClockServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedClockServiceServer struct{}
 
-func (UnimplementedClockServiceServer) Now(context.Context, *emptypb.Empty) (*NowResponse, error) {
+func (UnimplementedClockServiceServer) Now(context.Context, *emptypb.Empty) (*dto.TimeEvent, error) {
 	return nil, status.Error(codes.Unimplemented, "method Now not implemented")
 }
 func (UnimplementedClockServiceServer) mustEmbedUnimplementedClockServiceServer() {}
@@ -109,7 +110,7 @@ func _ClockService_Now_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ClockService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "clockEmulator.ClockService",
+	ServiceName: "clock.ClockService",
 	HandlerType: (*ClockServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -118,5 +119,5 @@ var ClockService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "clock/now.proto",
+	Metadata: "clock/nowService.proto",
 }

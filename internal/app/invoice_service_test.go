@@ -11,7 +11,6 @@ import (
 	dbfakes "github.com/Kenji-Uema/paymentSimulator/internal/infra/db/fakes"
 	mqfakes "github.com/Kenji-Uema/paymentSimulator/internal/infra/mq/fakes"
 
-	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/appErrors"
@@ -91,6 +90,36 @@ func TestInvoiceService_GenerateInvoiceDoc(t *testing.T) {
 	})
 }
 
+func TestNewInvoiceService(t *testing.T) {
+	t.Run("invalid dependencies", func(t *testing.T) {
+		_, err := NewInvoiceService(nil, nil, nil, nil, "")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var validationErr *validationErrors.ErrValidationConstrain
+		if !errors.As(err, &validationErr) {
+			t.Fatalf("expected *validationErrors.ErrValidationConstrain, got %T", err)
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		service, err := NewInvoiceService(
+			&dbfakes.FakeInvoiceRepo{},
+			&clockfakes.FakeClock{},
+			&mqfakes.FakeMqConsumer{},
+			&mqfakes.FakeMqProducer{},
+			"https://pay.local",
+		)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if service == nil {
+			t.Fatal("expected non-nil service")
+		}
+	})
+}
+
 func TestInvoiceService_SaveInvoice(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		insertedId := bson.NewObjectID()
@@ -150,15 +179,13 @@ func TestInvoiceService_SaveInvoice(t *testing.T) {
 }
 
 func TestInvoiceService_PublishPaymentRequest(t *testing.T) {
-	paymentMakingConfig := config.PaymentMakingCardConfig{
-		Host: "https://pay.local",
-	}
+	paymentHost := "https://pay.local"
 
 	t.Run("success", func(t *testing.T) {
 		paymentProducer := &mqfakes.FakeMqProducer{}
 		service := &invoiceService{
-			paymentProducer:     paymentProducer,
-			paymentMakingConfig: paymentMakingConfig,
+			paymentProducer: paymentProducer,
+			paymentHost:     paymentHost,
 		}
 
 		invoice := validInvoiceDocument()
@@ -179,8 +206,8 @@ func TestInvoiceService_PublishPaymentRequest(t *testing.T) {
 	t.Run("invalid request", func(t *testing.T) {
 		paymentProducer := &mqfakes.FakeMqProducer{}
 		service := &invoiceService{
-			paymentProducer:     paymentProducer,
-			paymentMakingConfig: paymentMakingConfig,
+			paymentProducer: paymentProducer,
+			paymentHost:     paymentHost,
 		}
 
 		invoice := validInvoiceDocument()
@@ -207,8 +234,8 @@ func TestInvoiceService_PublishPaymentRequest(t *testing.T) {
 			},
 		}
 		service := &invoiceService{
-			paymentProducer:     paymentProducer,
-			paymentMakingConfig: paymentMakingConfig,
+			paymentProducer: paymentProducer,
+			paymentHost:     paymentHost,
 		}
 
 		invoice := validInvoiceDocument()
@@ -324,7 +351,7 @@ func TestInvoiceService_ProcessInvoiceDelivery(t *testing.T) {
 				_ = routingKey
 				return &validationErrors.ErrValidationConstrain{Field: "x", Message: "bad"}
 			}},
-			paymentMakingConfig: config.PaymentMakingCardConfig{Host: "https://pay.local"},
+			paymentHost: "https://pay.local",
 		}
 
 		err := service.processInvoiceDelivery(context.Background(), delivery)
@@ -355,7 +382,7 @@ func TestInvoiceService_ProcessInvoiceDelivery(t *testing.T) {
 				_ = routingKey
 				return errors.New("publish failed")
 			}},
-			paymentMakingConfig: config.PaymentMakingCardConfig{Host: "https://pay.local"},
+			paymentHost: "https://pay.local",
 		}
 
 		err := service.processInvoiceDelivery(context.Background(), delivery)
@@ -376,8 +403,8 @@ func TestInvoiceService_ProcessInvoiceDelivery(t *testing.T) {
 			invoiceRepo: &dbfakes.FakeInvoiceRepo{AddFn: func(context.Context, document.Invoice) (bson.ObjectID, error) {
 				return bson.NewObjectID(), nil
 			}},
-			paymentProducer:     &mqfakes.FakeMqProducer{},
-			paymentMakingConfig: config.PaymentMakingCardConfig{Host: "https://pay.local"},
+			paymentProducer: &mqfakes.FakeMqProducer{},
+			paymentHost:     "https://pay.local",
 		}
 
 		err := service.processInvoiceDelivery(context.Background(), delivery)
@@ -422,11 +449,11 @@ func TestInvoiceService_StartInvoiceProcessing(t *testing.T) {
 		}}
 		producer := &mqfakes.FakeMqProducer{}
 		service := &invoiceService{
-			clock:               &clockfakes.FakeClock{NowFn: func(context.Context) (*time.Time, error) { return &now, nil }},
-			invoiceRepo:         repo,
-			invoiceConsumer:     invoiceConsumer,
-			paymentProducer:     producer,
-			paymentMakingConfig: config.PaymentMakingCardConfig{Host: "https://pay.local"},
+			clock:           &clockfakes.FakeClock{NowFn: func(context.Context) (*time.Time, error) { return &now, nil }},
+			invoiceRepo:     repo,
+			invoiceConsumer: invoiceConsumer,
+			paymentProducer: producer,
+			paymentHost:     "https://pay.local",
 		}
 
 		service.StartInvoiceProcessing(context.Background())

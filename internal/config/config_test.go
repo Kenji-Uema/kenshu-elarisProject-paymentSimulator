@@ -10,20 +10,20 @@ func TestLoadConfigs(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if cfg.ServerConfig.Host != "127.0.0.1" {
-		t.Fatalf("unexpected SERVICE_HOST: got=%q", cfg.ServerConfig.Host)
+	if cfg.AppConfig.ServerConfig.Host != "127.0.0.1" {
+		t.Fatalf("unexpected SERVICE_HOST: got=%q", cfg.AppConfig.ServerConfig.Host)
 	}
-	if cfg.ServerConfig.Port != 8080 {
-		t.Fatalf("unexpected SERVICE_PORT: got=%d", cfg.ServerConfig.Port)
+	if cfg.AppConfig.ServerConfig.Port != 8080 {
+		t.Fatalf("unexpected SERVICE_PORT: got=%d", cfg.AppConfig.ServerConfig.Port)
 	}
 	if cfg.MongoConfig.Database != "test_db" {
 		t.Fatalf("unexpected MONGO_DATABASE: got=%q", cfg.MongoConfig.Database)
 	}
-	if cfg.PaymentPublisherConfig.Exchange.Name != "payment.events" {
-		t.Fatalf("unexpected PAYMENT_EXCHANGE_NAME: got=%q", cfg.PaymentPublisherConfig.Exchange.Name)
+	if cfg.RabbitMqConfig.Publishers.PaymentExchange.Name != "payment.events" {
+		t.Fatalf("unexpected PAYMENT_EXCHANGE_NAME: got=%q", cfg.RabbitMqConfig.Publishers.PaymentExchange.Name)
 	}
-	if cfg.InvoiceConsumerConfig.Queue.Name != "invoice.requests" {
-		t.Fatalf("unexpected INVOICE_QUEUE_NAME: got=%q", cfg.InvoiceConsumerConfig.Queue.Name)
+	if cfg.RabbitMqConfig.Consumers.InvoiceQueue.Name != "invoice.requests" {
+		t.Fatalf("unexpected INVOICE_QUEUE_NAME: got=%q", cfg.RabbitMqConfig.Consumers.InvoiceQueue.Name)
 	}
 }
 

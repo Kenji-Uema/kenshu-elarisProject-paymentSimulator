@@ -5,8 +5,6 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/Kenji-Uema/paymentSimulator/internal/config"
-
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -37,9 +35,9 @@ func (h *TraceHandler) WithGroup(name string) slog.Handler {
 	return &TraceHandler{base: h.base.WithGroup(name)}
 }
 
-func NewLogger(config config.LogConfig) *slog.Logger {
+func NewLogger(level int) *slog.Logger {
 	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level:     slog.Level(config.Level),
+		Level:     slog.Level(level),
 		AddSource: true,
 	})
 

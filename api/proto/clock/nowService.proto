@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package clock;
+option go_package = "github.com/Kenji-Uema/paymentSimulator/internal/infra/clock;clock";
+
+import "google/protobuf/empty.proto";
+import "event/time_event.proto";
+
+service ClockService {
+  rpc Now (google.protobuf.Empty) returns (event.TimeEvent);
+}

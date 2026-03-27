@@ -55,6 +55,15 @@ type BookingSnapshot struct {
 	ValuePerNight  Money  `bson:"value_per_night"`
 }
 
+func IsValidInvoiceStatus(status string) bool {
+	switch status {
+	case InvoiceStatusPending, InvoiceStatusPaid:
+		return true
+	default:
+		return false
+	}
+}
+
 func NewInvoiceFromProtoMessage(invoiceProto *dto.CreateInvoicePaymentRequest, invoiceNumber string, now time.Time) (Invoice, error) {
 	if err := validation.New().NotNil("invoiceProto", invoiceProto).Validate(); err != nil {
 		return Invoice{}, err

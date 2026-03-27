@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/infra/db"
 	"github.com/Kenji-Uema/paymentSimulator/internal/infra/mq"
@@ -24,15 +25,43 @@ type Server struct {
 	paymentServerMux *runtime.ServeMux
 	rabbitmqClient   *mq.RabbitMqConnection
 	mongoClient      *db.Db
-	serverConfig     config.ServerConfig
+	serverConfig     httpServerConfig
 	telemetryConfig  config.TelemetryConfig
 }
 
-func NewHttpServer(config config.ServerConfig, telemetryConfig config.TelemetryConfig,
-	paymentServerMux *runtime.ServeMux, rabbitmqClient *mq.RabbitMqConnection, mongoClient *db.Db) *Server {
+type httpServerConfig struct {
+	host                       string
+	port                       int
+	readHeaderTimeoutInSeconds int
+	readTimeoutInSeconds       int
+	writeTimeoutInSeconds      int
+	idleTimeoutInSeconds       int
+}
 
-	return &Server{serverConfig: config, telemetryConfig: telemetryConfig,
-		paymentServerMux: paymentServerMux, rabbitmqClient: rabbitmqClient, mongoClient: mongoClient}
+func NewHttpServer(host string, port int, readHeaderTimeoutInSeconds int, readTimeoutInSeconds int,
+	writeTimeoutInSeconds int, idleTimeoutInSeconds int, telemetryConfig config.TelemetryConfig,
+	paymentServerMux *runtime.ServeMux, rabbitmqClient *mq.RabbitMqConnection, mongoClient *db.Db) (*Server, error) {
+	if err := validation.New().
+		NotBlank("http.host", host).
+		PositiveValue("http.port", port).
+		PositiveValue("http.read_header_timeout_in_seconds", readHeaderTimeoutInSeconds).
+		PositiveValue("http.read_timeout_in_seconds", readTimeoutInSeconds).
+		PositiveValue("http.write_timeout_in_seconds", writeTimeoutInSeconds).
+		PositiveValue("http.idle_timeout_in_seconds", idleTimeoutInSeconds).
+		NotNil("payment_server_mux", paymentServerMux).
+		Validate(); err != nil {
+		return nil, err
+	}
+
+	return &Server{serverConfig: httpServerConfig{
+		host:                       host,
+		port:                       port,
+		readHeaderTimeoutInSeconds: readHeaderTimeoutInSeconds,
+		readTimeoutInSeconds:       readTimeoutInSeconds,
+		writeTimeoutInSeconds:      writeTimeoutInSeconds,
+		idleTimeoutInSeconds:       idleTimeoutInSeconds,
+	}, telemetryConfig: telemetryConfig,
+		paymentServerMux: paymentServerMux, rabbitmqClient: rabbitmqClient, mongoClient: mongoClient}, nil
 }
 
 func (s *Server) SetServer() {
@@ -42,12 +71,12 @@ func (s *Server) SetServer() {
 	rootMux.Handle("/", s.traceContextMiddleware(otelhttp.NewHandler(s.paymentServerMux, "payment-http-gateway")))
 
 	server := &http.Server{
-		Addr:              fmt.Sprintf("%s:%d", s.serverConfig.Host, s.serverConfig.Port),
+		Addr:              fmt.Sprintf("%s:%d", s.serverConfig.host, s.serverConfig.port),
 		Handler:           rootMux,
-		ReadHeaderTimeout: time.Duration(s.serverConfig.ReadHeaderTimeoutInSeconds) * time.Second,
-		ReadTimeout:       time.Duration(s.serverConfig.ReadTimeoutInSeconds) * time.Second,
-		WriteTimeout:      time.Duration(s.serverConfig.WriteTimeoutInSeconds) * time.Second,
-		IdleTimeout:       time.Duration(s.serverConfig.IdleTimeoutInSeconds) * time.Second,
+		ReadHeaderTimeout: time.Duration(s.serverConfig.readHeaderTimeoutInSeconds) * time.Second,
+		ReadTimeout:       time.Duration(s.serverConfig.readTimeoutInSeconds) * time.Second,
+		WriteTimeout:      time.Duration(s.serverConfig.writeTimeoutInSeconds) * time.Second,
+		IdleTimeout:       time.Duration(s.serverConfig.idleTimeoutInSeconds) * time.Second,
 	}
 	s.server = server
 }

@@ -40,7 +40,7 @@ func SetupRabbitmqExchangesAndQueues(t FullGinkgoTInterface, amqpCh *amqp.Channe
 
 func MustDeclareExchange(t TestReporter, ch *amqp.Channel, name string) {
 	t.Helper()
-	if err := ch.ExchangeDeclare(name, "direct", false, false, false, false, nil); err != nil {
+	if err := ch.ExchangeDeclare(name, "direct", true, false, false, false, nil); err != nil {
 		t.Fatalf("declare exchange %q: %v", name, err)
 	}
 }

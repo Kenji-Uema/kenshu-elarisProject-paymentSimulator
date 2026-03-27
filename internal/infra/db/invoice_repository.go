@@ -10,6 +10,7 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/validationErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -19,8 +20,11 @@ type invoiceRepo struct {
 	collection *mongo.Collection
 }
 
-func NewInvoiceRepo(db *mongo.Database) port.InvoiceRepo {
-	return &invoiceRepo{collection: db.Collection("invoices")}
+func NewInvoiceRepo(db *mongo.Database) (port.InvoiceRepo, error) {
+	if err := validation.New().NotNil("mongo_db", db).Validate(); err != nil {
+		return nil, err
+	}
+	return &invoiceRepo{collection: db.Collection("invoices")}, nil
 }
 
 func (r invoiceRepo) FindByInvoiceNumber(ctx context.Context, invoiceNumber string) (document.Invoice, error) {
@@ -62,6 +66,7 @@ func (r invoiceRepo) FindByBookingNumberAndDocumentNumber(ctx context.Context, b
 func (r invoiceRepo) Add(ctx context.Context, invoice document.Invoice) (bson.ObjectID, error) {
 	if err := validation.New().
 		NotBlank("invoice.invoice_number", invoice.InvoiceNumber).
+		NotBlank("invoice.status", invoice.Status).
 		NotBlank("invoice.idempotency_id", invoice.IdempotencyId).
 		NotBlank("invoice.booking_id", invoice.BookingId).
 		NotBlank("invoice.payer_id", invoice.PayerId).
@@ -71,6 +76,12 @@ func (r invoiceRepo) Add(ctx context.Context, invoice document.Invoice) (bson.Ob
 		NotZeroValue("invoice.issued_at", invoice.IssuedAt).
 		NotZeroValue("invoice.due_at", invoice.DueAt).Validate(); err != nil {
 		return bson.ObjectID{}, err
+	}
+	if !document.IsValidInvoiceStatus(invoice.Status) {
+		return bson.ObjectID{}, &validationErrors.ErrValidationConstrain{
+			Field:   "invoice.status",
+			Message: "must be one of pending, paid",
+		}
 	}
 
 	res, err := r.collection.InsertOne(ctx, invoice)
@@ -100,6 +111,12 @@ func (r invoiceRepo) UpdateStatus(ctx context.Context, invoiceNumber string, sta
 		NotBlank("status", status).
 		NotZeroValue("updatedAt", updatedAt).Validate(); err != nil {
 		return err
+	}
+	if !document.IsValidInvoiceStatus(status) {
+		return &validationErrors.ErrValidationConstrain{
+			Field:   "status",
+			Message: "must be one of pending, paid",
+		}
 	}
 
 	filter := bson.M{"invoice_number": invoiceNumber}

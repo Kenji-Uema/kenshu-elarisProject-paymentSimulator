@@ -117,15 +117,10 @@ func startGatewayServer(t *testing.T, paymentMakingServer paymentgw.PaymentMakin
 	addr := ln.Addr().(*net.TCPAddr)
 	_ = ln.Close()
 
-	cfg := config.ServerConfig{
-		Host:                       "127.0.0.1",
-		Port:                       addr.Port,
-		ReadHeaderTimeoutInSeconds: 1,
-		ReadTimeoutInSeconds:       1,
-		WriteTimeoutInSeconds:      1,
-		IdleTimeoutInSeconds:       1,
+	s, err := NewHttpServer("127.0.0.1", addr.Port, 1, 1, 1, 1, config.TelemetryConfig{}, mux, nil, nil)
+	if err != nil {
+		t.Fatalf("create http server: %v", err)
 	}
-	s := NewHttpServer(cfg, config.TelemetryConfig{}, mux, nil, nil)
 	s.SetServer()
 
 	done := make(chan struct{})

@@ -62,6 +62,18 @@ func (v *Validator) NotNil(field string, value any) *Validator {
 		if value == nil {
 			return &validationErrors.ErrValidationConstrain{Field: field, Message: "must not be nil"}
 		}
+
+		rv := reflect.ValueOf(value)
+		switch rv.Kind() {
+		case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+			if rv.IsNil() {
+				return &validationErrors.ErrValidationConstrain{Field: field, Message: "must not be nil"}
+			}
+		}
+
+		if !rv.IsValid() {
+			return &validationErrors.ErrValidationConstrain{Field: field, Message: "must not be nil"}
+		}
 		return nil
 	})
 

@@ -1,4 +1,4 @@
-build: generate
+codbuild: generate
 	GOCACHE=$(PWD)/.gocache GOMODCACHE=$(PWD)/.gomodcache go build -o $(PWD)/bin/payment-simulator ./internal
 
 test:

@@ -11,11 +11,11 @@ import (
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/util"
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
-	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/appErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/validationErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment"
 	"github.com/google/uuid"
@@ -26,22 +26,34 @@ import (
 
 type paymentMakingService struct {
 	payment.PaymentMakingServiceServer
-	config          config.PaymentMakingCardConfig
+	failChance      int
 	clock           port.Clock
 	invoiceRepo     port.InvoiceRepo
 	receiptRepo     port.ReceiptRepo
 	paymentProducer port.MqProducer
 }
 
-func NewPaymentMakingServer(config config.PaymentMakingCardConfig, clock port.Clock,
-	invoiceRepo port.InvoiceRepo, receiptRepo port.ReceiptRepo, producer port.MqProducer) payment.PaymentMakingServiceServer {
+func NewPaymentMakingServer(failChance int, clock port.Clock,
+	invoiceRepo port.InvoiceRepo, receiptRepo port.ReceiptRepo, producer port.MqProducer) (payment.PaymentMakingServiceServer, error) {
+	if err := validation.New().
+		NotNil("clock", clock).
+		NotNil("invoice_repo", invoiceRepo).
+		NotNil("receipt_repo", receiptRepo).
+		NotNil("payment_producer", producer).
+		Validate(); err != nil {
+		return nil, err
+	}
+	if failChance < 0 {
+		return nil, &validationErrors.ErrValidationConstrain{Field: "fail_chance", Message: "must be greater than or equal to 0"}
+	}
+
 	return &paymentMakingService{
-		config:          config,
+		failChance:      failChance,
 		clock:           clock,
 		invoiceRepo:     invoiceRepo,
 		receiptRepo:     receiptRepo,
 		paymentProducer: producer,
-	}
+	}, nil
 }
 
 func (s *paymentMakingService) PayWithCard(ctx context.Context, req *dto.PayWithCardRequest) (*dto.PayWithCardResponse, error) {
@@ -72,8 +84,8 @@ func (s *paymentMakingService) PayWithCard(ctx context.Context, req *dto.PayWith
 		return nil, status.Error(codes.FailedPrecondition, "invoice is already paid")
 	}
 
-	if n := rand.Int(); n < s.config.FailChance {
-		slog.InfoContext(ctx, "payment failed; generated random number below threshold", "number", n, "chance", s.config.FailChance)
+	if n := rand.Int(); n < s.failChance {
+		slog.InfoContext(ctx, "payment failed; generated random number below threshold", "number", n, "chance", s.failChance)
 		return s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_FAILED, *now)
 	}
 

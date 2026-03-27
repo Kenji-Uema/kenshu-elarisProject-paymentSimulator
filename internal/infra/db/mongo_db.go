@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -19,6 +20,21 @@ type Db struct {
 }
 
 func NewMongoDb(ctx context.Context, cfg config.MongoConfig) (*Db, error) {
+	if err := validation.New().
+		NotBlank("mongo.username", string(cfg.Username)).
+		NotBlank("mongo.password", string(cfg.Password)).
+		NotBlank("mongo.host", cfg.Host).
+		NotBlank("mongo.database", cfg.Database).
+		PositiveValue("mongo.connection_timeout_in_seconds", cfg.ConnectionTimeoutInSeconds).
+		PositiveValue("mongo.server_selection_timeout_in_seconds", cfg.ServerSelectionTimeoutInSeconds).
+		PositiveValue("mongo.ping_timeout_in_seconds", cfg.PingTimeoutInSeconds).
+		PositiveValue("mongo.startup_timeout_in_seconds", cfg.StartupTimeoutInSeconds).
+		PositiveValue("mongo.max_conn_idle_time_in_seconds", cfg.MaxConnIdleTimeInSeconds).
+		PositiveValue("mongo.max_pool_size", cfg.MaxPoolSize).
+		Validate(); err != nil {
+		return nil, err
+	}
+
 	startCtx, cancel := context.WithTimeout(ctx, time.Duration(cfg.StartupTimeoutInSeconds)*time.Second)
 	defer cancel()
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
+	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -44,6 +45,7 @@ func Init(ctx context.Context, cfg config.TelemetryConfig, appCfg config.AppConf
 
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
+			b3.New(),
 			propagation.TraceContext{},
 			propagation.Baggage{},
 		),

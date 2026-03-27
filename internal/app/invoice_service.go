@@ -8,7 +8,6 @@ import (
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/util"
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
-	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/appErrors"
@@ -25,24 +24,33 @@ type InvoiceService interface {
 }
 
 type invoiceService struct {
-	clock               port.Clock
-	invoiceRepo         port.InvoiceRepo
-	invoiceConsumer     port.MqConsumer
-	paymentProducer     port.MqProducer
-	paymentMakingConfig config.PaymentMakingCardConfig
+	clock           port.Clock
+	invoiceRepo     port.InvoiceRepo
+	invoiceConsumer port.MqConsumer
+	paymentProducer port.MqProducer
+	paymentHost     string
 }
 
 func NewInvoiceService(invoiceRepo port.InvoiceRepo, clock port.Clock,
 	invoiceConsumer port.MqConsumer, paymentProducer port.MqProducer,
-	paymentMakingConfig config.PaymentMakingCardConfig) InvoiceService {
+	paymentHost string) (InvoiceService, error) {
+	if err := validation.New().
+		NotNil("invoice_repo", invoiceRepo).
+		NotNil("clock", clock).
+		NotNil("invoice_consumer", invoiceConsumer).
+		NotNil("payment_producer", paymentProducer).
+		NotBlank("payment_host", paymentHost).
+		Validate(); err != nil {
+		return nil, err
+	}
 
 	return &invoiceService{
-		clock:               clock,
-		invoiceRepo:         invoiceRepo,
-		invoiceConsumer:     invoiceConsumer,
-		paymentProducer:     paymentProducer,
-		paymentMakingConfig: paymentMakingConfig,
-	}
+		clock:           clock,
+		invoiceRepo:     invoiceRepo,
+		invoiceConsumer: invoiceConsumer,
+		paymentProducer: paymentProducer,
+		paymentHost:     paymentHost,
+	}, nil
 }
 
 func (s *invoiceService) StartInvoiceProcessing(ctx context.Context) {
@@ -140,7 +148,7 @@ func (s *invoiceService) saveInvoice(ctx context.Context, invoice document.Invoi
 }
 
 func (s *invoiceService) publishPaymentRequest(ctx context.Context, invoice document.Invoice) error {
-	paymentRequest := buildPaymentRequest(invoice, s.paymentMakingConfig.Host)
+	paymentRequest := buildPaymentRequest(invoice, s.paymentHost)
 
 	if err := s.validatePaymentRequest(paymentRequest); err != nil {
 		return err

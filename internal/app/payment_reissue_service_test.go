@@ -8,13 +8,37 @@ import (
 
 	dbfakes "github.com/Kenji-Uema/paymentSimulator/internal/infra/db/fakes"
 
-	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
+	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/validationErrors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+func TestNewPaymentReissueService(t *testing.T) {
+	t.Run("invalid dependencies", func(t *testing.T) {
+		_, err := NewPaymentReissueService(nil, "")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var validationErr *validationErrors.ErrValidationConstrain
+		if !errors.As(err, &validationErr) {
+			t.Fatalf("expected *validationErrors.ErrValidationConstrain, got %T", err)
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		service, err := NewPaymentReissueService(&dbfakes.FakeInvoiceRepo{}, "https://pay.local")
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if service == nil {
+			t.Fatal("expected non-nil service")
+		}
+	})
+}
 
 func TestPaymentReissueService_Reissue(t *testing.T) {
 	t.Run("invalid request", func(t *testing.T) {
@@ -88,8 +112,8 @@ func TestPaymentReissueService_Reissue(t *testing.T) {
 			},
 		}
 		service := paymentReissueService{
-			invoiceRepo:         repo,
-			paymentMakingConfig: config.PaymentMakingCardConfig{Host: "https://pay.local"},
+			invoiceRepo: repo,
+			paymentHost: "https://pay.local",
 		}
 
 		resp, err := service.Reissue(context.Background(), validReissueRequest())
@@ -120,8 +144,8 @@ func TestPaymentReissueService_Reissue(t *testing.T) {
 			},
 		}
 		service := paymentReissueService{
-			invoiceRepo:         repo,
-			paymentMakingConfig: config.PaymentMakingCardConfig{Host: "https://pay.local"},
+			invoiceRepo: repo,
+			paymentHost: "https://pay.local",
 		}
 
 		_, err := service.Reissue(context.Background(), validReissueRequest())

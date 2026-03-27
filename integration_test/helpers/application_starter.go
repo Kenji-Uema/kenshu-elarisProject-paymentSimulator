@@ -37,6 +37,8 @@ func ApplicationStart(t TestReporter, appPort int, clockHost string, clockPort i
 		"INVOICE_QUEUE_NAME":             "invoice.requests",
 		"INVOICE_QUEUE_DURABLE":          "false",
 		"INVOICE_QUEUE_AUTO_DELETE":      "true",
+		"INVOICE_BINDING_EXCHANGE_NAME":  "payment.events",
+		"INVOICE_BINDING_ROUTING_KEY":    "invoice.request",
 		"INVOICE_CONSUME_CONSUMER":       "invoice-main-integration",
 		"INVOICE_CONSUME_AUTO_ACK":       "false",
 		"PAYMENT_MAKING_CARD_HOST":       "http://127.0.0.1",

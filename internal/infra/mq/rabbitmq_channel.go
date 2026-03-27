@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/mqErrors"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -13,8 +14,14 @@ type RabbitMqChannel struct {
 	channel *amqp.Channel
 }
 
-func NewRabbitMqChannel(rabbitmqConnection *RabbitMqConnection) *RabbitMqChannel {
-	return &RabbitMqChannel{RabbitMqConnection: rabbitmqConnection}
+func NewRabbitMqChannel(rabbitmqConnection *RabbitMqConnection) (*RabbitMqChannel, error) {
+	if err := validation.New().
+		NotNil("rabbitmq_connection", rabbitmqConnection).
+		Validate(); err != nil {
+		return nil, err
+	}
+
+	return &RabbitMqChannel{RabbitMqConnection: rabbitmqConnection}, nil
 }
 
 func (r *RabbitMqChannel) openChannel() error {

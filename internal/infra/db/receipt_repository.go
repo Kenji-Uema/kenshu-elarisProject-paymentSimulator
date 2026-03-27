@@ -18,8 +18,11 @@ type receiptRepo struct {
 	collection *mongo.Collection
 }
 
-func NewReceiptRepo(db *mongo.Database) port.ReceiptRepo {
-	return &receiptRepo{collection: db.Collection("receipts")}
+func NewReceiptRepo(db *mongo.Database) (port.ReceiptRepo, error) {
+	if err := validation.New().NotNil("mongo_db", db).Validate(); err != nil {
+		return nil, err
+	}
+	return &receiptRepo{collection: db.Collection("receipts")}, nil
 }
 
 func (r receiptRepo) GetById(ctx context.Context, id bson.ObjectID) (document.Receipt, error) {
