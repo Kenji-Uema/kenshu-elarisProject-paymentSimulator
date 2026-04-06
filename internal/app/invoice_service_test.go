@@ -197,7 +197,7 @@ func TestInvoiceService_PublishPaymentRequest(t *testing.T) {
 		if paymentProducer.PublishCallCount != 1 {
 			t.Fatalf("expected Publish to be called once, got %d", paymentProducer.PublishCallCount)
 		}
-		expectedRoutingKey := fmt.Sprintf("payment.%s.request", invoice.PayerId)
+		expectedRoutingKey := fmt.Sprintf("guest.%s", invoice.PayerId)
 		if paymentProducer.LastPublishedRoutingKey != expectedRoutingKey {
 			t.Fatalf("unexpected routing key: %q", paymentProducer.LastPublishedRoutingKey)
 		}

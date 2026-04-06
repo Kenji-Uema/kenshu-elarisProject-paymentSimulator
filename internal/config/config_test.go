@@ -22,6 +22,9 @@ func TestLoadConfigs(t *testing.T) {
 	if cfg.RabbitMqConfig.Publishers.PaymentExchange.Name != "payment.events" {
 		t.Fatalf("unexpected PAYMENT_EXCHANGE_NAME: got=%q", cfg.RabbitMqConfig.Publishers.PaymentExchange.Name)
 	}
+	if cfg.RabbitMqConfig.Publishers.GuestCommunicationExchange.Name != "communication.events" {
+		t.Fatalf("unexpected GUEST_COMMUNICATION_EXCHANGE_NAME: got=%q", cfg.RabbitMqConfig.Publishers.GuestCommunicationExchange.Name)
+	}
 	if cfg.RabbitMqConfig.Consumers.InvoiceQueue.Name != "invoice.requests" {
 		t.Fatalf("unexpected INVOICE_QUEUE_NAME: got=%q", cfg.RabbitMqConfig.Consumers.InvoiceQueue.Name)
 	}
@@ -70,6 +73,8 @@ func setRequiredEnv(t *testing.T) {
 
 	t.Setenv("PAYMENT_EXCHANGE_NAME", "payment.events")
 	t.Setenv("PAYMENT_EXCHANGE_KIND", "direct")
+	t.Setenv("GUEST_COMMUNICATION_EXCHANGE_NAME", "communication.events")
+	t.Setenv("GUEST_COMMUNICATION_EXCHANGE_KIND", "topic")
 	t.Setenv("PAYMENT_PUBLISH_MANDATORY", "false")
 	t.Setenv("PAYMENT_PUBLISH_IMMEDIATE", "false")
 

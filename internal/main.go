@@ -75,6 +75,10 @@ func shutdown(ctx context.Context, components infra.Components, httpServer *tran
 		slog.ErrorContext(ctx, "close payment producer", "error", err)
 	}
 
+	if err := components.GuestCommProducer.CloseChannel(); err != nil {
+		slog.ErrorContext(ctx, "close guest communication producer", "error", err)
+	}
+
 	if err := components.InvoiceConsumer.CloseChannel(); err != nil {
 		slog.ErrorContext(ctx, "close invoice consumer", "error", err)
 	}

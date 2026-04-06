@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -30,16 +29,16 @@ func NewRabbitmqProducer(rabbitmqConnection *RabbitMqConnection, publishConfig c
 		return nil, err
 	}
 
-	paymentProducer := rabbitmqProducer{
+	producer := rabbitmqProducer{
 		RabbitMqChannel: channel,
 		publishConfig:   publishConfig,
 	}
 
-	if err := paymentProducer.openChannel(); err != nil {
+	if err := producer.openChannel(); err != nil {
 		return nil, err
 	}
 
-	return &paymentProducer, nil
+	return &producer, nil
 }
 
 func (p *rabbitmqProducer) DeclareExchange(config config.ExchangeConfig) error {
@@ -56,10 +55,15 @@ func (p *rabbitmqProducer) DeclareExchange(config config.ExchangeConfig) error {
 		}
 	}
 
-	if err := p.channel.ExchangeDeclare(p.exchangeName, p.exchangeKind,
-		config.Durable, config.AutoDelete, config.Internal,
-		config.NoWait, nil); err != nil {
-
+	if err := p.channel.ExchangeDeclare(
+		p.exchangeName,
+		p.exchangeKind,
+		config.Durable,
+		config.AutoDelete,
+		config.Internal,
+		config.NoWait,
+		nil,
+	); err != nil {
 		return fmt.Errorf("declare exchange %q: %w", config.Name, err)
 	}
 
@@ -73,13 +77,15 @@ func (p *rabbitmqProducer) Publish(ctx context.Context, message proto.Message, r
 		}
 	}
 
-	payload, err := protojson.Marshal(message)
+	payload, err := proto.Marshal(message)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to marshal message", "error", err)
-		return &mqErrors.UnexpectedErr{Msg: "failed to marshal message", Err: err}
+		slog.ErrorContext(ctx, "failed to marshal protobuf message", "error", err)
+		return &mqErrors.UnexpectedErr{Msg: "failed to marshal protobuf message", Err: err}
 	}
 
-	headers := amqp.Table{}
+	headers := amqp.Table{
+		"message_type": string(message.ProtoReflect().Descriptor().FullName()),
+	}
 	if sc := trace.SpanContextFromContext(ctx); sc.HasTraceID() {
 		carrier := propagation.MapCarrier{}
 		otel.GetTextMapPropagator().Inject(ctx, carrier)
@@ -95,15 +101,15 @@ func (p *rabbitmqProducer) Publish(ctx context.Context, message proto.Message, r
 		p.publishConfig.Mandatory,
 		p.publishConfig.Immediate,
 		amqp.Publishing{
-			ContentType:  "application/json",
+			ContentType:  "application/protobuf",
 			Body:         payload,
 			DeliveryMode: amqp.Persistent,
 			Headers:      headers,
 			Timestamp:    time.Now(),
 		},
 	); err != nil {
-		slog.ErrorContext(ctx, "failed to publish message", "error", err)
-		return &mqErrors.UnexpectedErr{Msg: "failed to publish message", Err: err}
+		slog.ErrorContext(ctx, "failed to publish protobuf message", "error", err)
+		return &mqErrors.UnexpectedErr{Msg: "failed to publish protobuf message", Err: err}
 	}
 
 	return nil

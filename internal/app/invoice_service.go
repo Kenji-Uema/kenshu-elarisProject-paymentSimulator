@@ -153,7 +153,7 @@ func (s *invoiceService) publishPaymentRequest(ctx context.Context, invoice docu
 	if err := s.validatePaymentRequest(paymentRequest); err != nil {
 		return err
 	}
-	routingKey := fmt.Sprintf("payment.%s.request", invoice.PayerId)
+	routingKey := fmt.Sprintf("%s%s", "guest.", invoice.PayerId)
 	if err := s.paymentProducer.Publish(ctx, paymentRequest, routingKey); err != nil {
 		return &appErrors.PublishErr{
 			Msg: fmt.Sprintf("failed to publish paymentRequest; routingKey: %s; invoiceNumber: %s", routingKey, paymentRequest.InvoiceNumber),

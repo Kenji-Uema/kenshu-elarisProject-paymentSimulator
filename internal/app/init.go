@@ -38,7 +38,7 @@ func Init(configs config.Configs, components infra.Components) (Services, error)
 		components.InvoiceRepo,
 		components.Clock,
 		components.InvoiceConsumer,
-		components.PaymentProducer,
+		components.GuestCommProducer,
 		configs.Services.PaymentMakingCardConfig.Host,
 	)
 	if err != nil {

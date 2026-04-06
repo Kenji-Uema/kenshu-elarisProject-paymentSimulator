@@ -8,4 +8,4 @@ generate:
 	npx buf generate
 
 docker-build:
-	 docker build --build-arg SERVICE_NAME=payment-simulator --build-arg VERSION=latest -t payment-simulator:latest .
+	 docker build --build-arg SERVICE_NAME=payment-simulator --build-arg VERSION=1.0.1 -t payment-simulator:1.0.1 .

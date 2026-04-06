@@ -2,14 +2,12 @@ package mq
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/config"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
-	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/mqErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -44,28 +42,58 @@ func TestRabbitmqConsumer_BindQueue(t *testing.T) {
 }
 
 func TestRabbitmqProducer_Publish(t *testing.T) {
-	setupAndRun("edge cases", t, func(t *testing.T, _ port.MqConsumer, producer port.MqProducer) {
-		exchangeName := "producer.publish.exchange"
+	setupAndRun("publish flow", t, func(t *testing.T, consumer port.MqConsumer, producer port.MqProducer) {
+		exchangeName := fmt.Sprintf("producer.publish.exchange.%d", time.Now().UnixNano())
+		queueName := fmt.Sprintf("producer.publish.queue.%d", time.Now().UnixNano())
+		routingKey := "payment.created"
+
 		if err := producer.DeclareExchange(config.ExchangeConfig{Name: exchangeName, Kind: "direct"}); err != nil {
 			t.Fatalf("declare exchange: %v", err)
 		}
+		if err := consumer.DeclareQueue(context.Background(), config.QueueConfig{Name: queueName, AutoDelete: true}); err != nil {
+			t.Fatalf("declare queue: %v", err)
+		}
+		if err := consumer.BindQueue(context.Background(), config.BindingConfig{ExchangeName: exchangeName, RoutingKey: routingKey}); err != nil {
+			t.Fatalf("bind queue: %v", err)
+		}
 
-		t.Run("returns unexpected error when message cannot be marshaled", func(t *testing.T) {
-			invalidMessage := &dto.PaymentConfirmation{
-				// protojson marshaling fails on invalid UTF-8 in string fields.
-				Id: "invalid-\xff",
-			}
+		consumeCtx, cancelConsume := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelConsume()
+		deliveries, err := consumer.Consume(consumeCtx)
+		if err != nil {
+			t.Fatalf("consume: %v", err)
+		}
 
-			err := producer.Publish(context.Background(), invalidMessage, "payment.created")
-			if err == nil {
-				t.Fatal("expected error, got nil")
-			}
+		msg := &dto.PaymentConfirmation{
+			Id:            "id-1",
+			BookingId:     "booking-1",
+			PayerId:       "payer-1",
+			InvoiceNumber: "INV-2026-0001",
+			ReceiptNumber: "RCPT-2026-0001",
+			ConfirmedAt:   timestamppb.Now(),
+		}
 
-			var unexpectedErr *mqErrors.UnexpectedErr
-			if !errors.As(err, &unexpectedErr) {
-				t.Fatalf("expected *mqErrors.UnexpectedErr, got %T", err)
+		if err := producer.Publish(context.Background(), msg, routingKey); err != nil {
+			t.Fatalf("publish: %v", err)
+		}
+
+		select {
+		case d, ok := <-deliveries:
+			if !ok {
+				t.Fatal("deliveries channel closed before receiving message")
 			}
-		})
+			if d.ContentType != "application/protobuf" {
+				t.Fatalf("unexpected content type: got=%q want=%q", d.ContentType, "application/protobuf")
+			}
+			if got := d.Headers["message_type"]; got != "paymentSimulator.payment.v1.PaymentConfirmation" {
+				t.Fatalf("unexpected message_type header: got=%v", got)
+			}
+			if err := d.Ack(false); err != nil {
+				t.Fatalf("ack: %v", err)
+			}
+		case <-consumeCtx.Done():
+			t.Fatalf("timed out waiting for delivery: %v", consumeCtx.Err())
+		}
 	})
 }
 

@@ -21,6 +21,7 @@ type Components struct {
 	ReceiptRepo       port.ReceiptRepo
 	RabbitMQ          *mq.RabbitMqConnection
 	PaymentProducer   port.MqProducer
+	GuestCommProducer port.MqProducer
 	InvoiceConsumer   port.MqConsumer
 	Clock             port.Clock
 }
@@ -61,6 +62,14 @@ func Init(ctx context.Context, configs config.Configs) (Components, error) {
 		return Components{}, fmt.Errorf("failed to declare exchange: %w", err)
 	}
 
+	guestCommProducer, err := mq.NewRabbitmqProducer(rabbitMQ, configs.RabbitMqConfig.Publishers.GuestCommunicationPublish)
+	if err != nil {
+		return Components{}, fmt.Errorf("failed to create guest communication producer: %w", err)
+	}
+	if err := guestCommProducer.DeclareExchange(configs.RabbitMqConfig.Publishers.GuestCommunicationExchange); err != nil {
+		return Components{}, fmt.Errorf("failed to declare guest communication exchange: %w", err)
+	}
+
 	invoiceConsumer, err := mq.NewRabbitmqConsumer(rabbitMQ, configs.RabbitMqConfig.Consumers.InvoiceConsume)
 	if err != nil {
 		return Components{}, fmt.Errorf("failed to create invoice consumer: %w", err)
@@ -84,6 +93,7 @@ func Init(ctx context.Context, configs config.Configs) (Components, error) {
 		ReceiptRepo:       receiptRepo,
 		RabbitMQ:          rabbitMQ,
 		PaymentProducer:   paymentProducer,
+		GuestCommProducer: guestCommProducer,
 		InvoiceConsumer:   invoiceConsumer,
 		Clock:             clockClient,
 	}, nil

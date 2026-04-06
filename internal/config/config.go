@@ -74,8 +74,10 @@ type RabbitMqConfig struct {
 	Host       string `env:"RABBITMQ_HOST,required"`
 	Port       int    `env:"RABBITMQ_PORT,required"`
 	Publishers struct {
-		PaymentExchange ExchangeConfig `envPrefix:"PAYMENT_EXCHANGE_"`
-		PaymentPublish  PublishConfig  `envPrefix:"PAYMENT_PUBLISH_"`
+		PaymentExchange            ExchangeConfig `envPrefix:"PAYMENT_EXCHANGE_"`
+		PaymentPublish             PublishConfig  `envPrefix:"PAYMENT_PUBLISH_"`
+		GuestCommunicationExchange ExchangeConfig `envPrefix:"GUEST_COMMUNICATION_EXCHANGE_"`
+		GuestCommunicationPublish  PublishConfig  `envPrefix:"GUEST_COMMUNICATION_PUBLISH_"`
 	}
 	Consumers struct {
 		InvoiceQueue   QueueConfig   `envPrefix:"INVOICE_QUEUE_"`
