@@ -9,8 +9,10 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/document"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
+	"github.com/Kenji-Uema/paymentSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -36,15 +38,23 @@ func NewPaymentReissueService(invoiceRepo port.InvoiceRepo, paymentHost string) 
 }
 
 func (p paymentReissueService) Reissue(ctx context.Context, r *dto.ReissuePaymentRequest) (*dto.PaymentRequest, error) {
+	ctx, span := telemetry.StartAppSpan(ctx, "payment.reissue_request",
+		attribute.String("payment.booking_id", r.GetBookingNumber()),
+		attribute.String("payment.payer_document", r.GetDocumentNumber()),
+	)
+	defer span.End()
+
 	if err := validation.New().
 		NotBlank("booking_number", r.GetBookingNumber()).
 		NotBlank("document_number", r.GetDocumentNumber()).Validate(); err != nil {
 
+		telemetry.RecordSpanError(span, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	invoice, err := p.invoiceRepo.FindByBookingNumberAndDocumentNumber(ctx, r.GetBookingNumber(), r.GetDocumentNumber())
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		var notFoundErr *dbErrors.InvoiceNotFoundErr
 		if errors.As(err, &notFoundErr) {
 			return nil, status.Error(codes.NotFound, err.Error())
@@ -58,6 +68,7 @@ func (p paymentReissueService) Reissue(ctx context.Context, r *dto.ReissuePaymen
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if strings.EqualFold(invoice.Status, document.InvoiceStatusPaid) {
+		telemetry.RecordSpanError(span, status.Error(codes.FailedPrecondition, "invoice is already paid"))
 		return nil, status.Error(codes.FailedPrecondition, "invoice is already paid")
 	}
 

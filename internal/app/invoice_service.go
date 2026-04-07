@@ -13,9 +13,11 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/appErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/validationErrors"
+	"github.com/Kenji-Uema/paymentSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -61,27 +63,39 @@ func (s *invoiceService) StartInvoiceProcessing(ctx context.Context) {
 	}
 
 	for delivery := range deliveries {
-		if err := s.processInvoiceDelivery(ctx, delivery); err != nil {
-			slog.ErrorContext(ctx, "process invoice delivery", "delivery_tag", delivery.DeliveryTag, "error", err)
+		deliveryCtx, span := telemetry.StartConsumerSpan(ctx, delivery, "invoice.requests")
+		if err := s.processInvoiceDelivery(deliveryCtx, delivery); err != nil {
+			telemetry.RecordDeliveryError(span, err)
+			slog.ErrorContext(deliveryCtx, "process invoice delivery", "delivery_tag", delivery.DeliveryTag, "error", err)
 		}
+		span.End()
 	}
 }
 
 func (s *invoiceService) processInvoiceDelivery(ctx context.Context, delivery amqp.Delivery) error {
+	ctx, span := telemetry.StartAppSpan(ctx, "payment.invoice.process_delivery",
+		attribute.Int64("messaging.rabbitmq.delivery_tag", int64(delivery.DeliveryTag)),
+		attribute.String("messaging.rabbitmq.routing_key", delivery.RoutingKey),
+	)
+	defer span.End()
+
 	createInvoiceRequest, err := s.unmarshalRequest(delivery)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		s.nack(ctx, delivery, false, false)
 		return err
 	}
 
 	invoice, err := s.generateInvoiceDoc(ctx, createInvoiceRequest)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		s.nack(ctx, delivery, false, false)
 		return err
 	}
 
 	invoiceID, err := s.saveInvoice(ctx, invoice)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		var alreadyExistsErr *appErrors.AlreadyExistsErr
 		if errors.As(err, &alreadyExistsErr) {
 			s.nack(ctx, delivery, false, false)
@@ -94,6 +108,7 @@ func (s *invoiceService) processInvoiceDelivery(ctx context.Context, delivery am
 	slog.InfoContext(ctx, "invoice created", "invoice_id", invoiceID)
 
 	if err := s.publishPaymentRequest(ctx, invoice); err != nil {
+		telemetry.RecordSpanError(span, err)
 		var validationErr *validationErrors.ErrValidationConstrain
 		if errors.As(err, &validationErr) {
 			s.nack(ctx, delivery, false, false)
@@ -116,18 +131,27 @@ func (s *invoiceService) unmarshalRequest(delivery amqp.Delivery) (*dto.CreateIn
 }
 
 func (s *invoiceService) generateInvoiceDoc(ctx context.Context, createInvoiceRequest *dto.CreateInvoicePaymentRequest) (document.Invoice, error) {
+	ctx, span := telemetry.StartAppSpan(ctx, "payment.invoice.generate",
+		attribute.String("payment.booking_id", createInvoiceRequest.GetBookingId()),
+		attribute.String("payment.payer_id", createInvoiceRequest.GetPayerId()),
+	)
+	defer span.End()
+
 	now, err := s.clock.Now(ctx)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		return document.Invoice{}, &appErrors.UnexpectedErr{Msg: "failed to get current time", Err: err}
 	}
 
 	invoiceNumber, err := util.GenerateHumanFriendlyId("INV", *now)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		return document.Invoice{}, &appErrors.UnexpectedErr{Msg: "failed to generate invoice number", Err: err}
 	}
 
 	invoice, err := document.NewInvoiceFromProtoMessage(createInvoiceRequest, invoiceNumber, *now)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		return document.Invoice{}, &appErrors.CorruptedDataError{Msg: "could not create invoice document from request", Err: err}
 	}
 
@@ -135,8 +159,15 @@ func (s *invoiceService) generateInvoiceDoc(ctx context.Context, createInvoiceRe
 }
 
 func (s *invoiceService) saveInvoice(ctx context.Context, invoice document.Invoice) (bson.ObjectID, error) {
+	ctx, span := telemetry.StartAppSpan(ctx, "payment.invoice.save",
+		attribute.String("payment.invoice_number", invoice.InvoiceNumber),
+		attribute.String("payment.booking_id", invoice.BookingId),
+	)
+	defer span.End()
+
 	invoiceID, err := s.invoiceRepo.Add(ctx, invoice)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		var alreadyExistsErr *dbErrors.AlreadyExistsErr
 		if errors.As(err, &alreadyExistsErr) {
 			return bson.ObjectID{}, &appErrors.AlreadyExistsErr{Err: err}
@@ -148,13 +179,22 @@ func (s *invoiceService) saveInvoice(ctx context.Context, invoice document.Invoi
 }
 
 func (s *invoiceService) publishPaymentRequest(ctx context.Context, invoice document.Invoice) error {
+	ctx, span := telemetry.StartAppSpan(ctx, "payment.invoice.publish_request",
+		attribute.String("payment.invoice_number", invoice.InvoiceNumber),
+		attribute.String("payment.booking_id", invoice.BookingId),
+		attribute.String("payment.payer_id", invoice.PayerId),
+	)
+	defer span.End()
+
 	paymentRequest := buildPaymentRequest(invoice, s.paymentHost)
 
 	if err := s.validatePaymentRequest(paymentRequest); err != nil {
+		telemetry.RecordSpanError(span, err)
 		return err
 	}
 	routingKey := fmt.Sprintf("%s%s", "guest.", invoice.PayerId)
 	if err := s.paymentProducer.Publish(ctx, paymentRequest, routingKey); err != nil {
+		telemetry.RecordSpanError(span, err)
 		return &appErrors.PublishErr{
 			Msg: fmt.Sprintf("failed to publish paymentRequest; routingKey: %s; invoiceNumber: %s", routingKey, paymentRequest.InvoiceNumber),
 			Err: err}

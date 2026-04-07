@@ -16,9 +16,11 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/appErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/dbErrors"
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/validationErrors"
+	"github.com/Kenji-Uema/paymentSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/paymentSimulator/internal/port"
 	"github.com/Kenji-Uema/paymentSimulator/internal/transport/grpc/payment"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -57,6 +59,11 @@ func NewPaymentMakingServer(failChance int, clock port.Clock,
 }
 
 func (s *paymentMakingService) PayWithCard(ctx context.Context, req *dto.PayWithCardRequest) (*dto.PayWithCardResponse, error) {
+	ctx, span := telemetry.StartAppSpan(ctx, "payment.pay_with_card",
+		attribute.String("payment.invoice_number", req.GetInvoiceNumber()),
+	)
+	defer span.End()
+
 	slog.DebugContext(ctx, "card information")
 
 	if err := validation.New().
@@ -67,47 +74,72 @@ func (s *paymentMakingService) PayWithCard(ctx context.Context, req *dto.PayWith
 		NotBlank("card.cvv", req.GetCard().GetCvv()).
 		NotBlank("card.holder_name", req.GetCard().GetHolderName()).Validate(); err != nil {
 
+		telemetry.RecordSpanError(span, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	now, err := s.clock.Now(ctx)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		slog.ErrorContext(ctx, "get current time", "error", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	invoice, err := s.invoiceRepo.FindByInvoiceNumber(ctx, req.GetInvoiceNumber())
+	loadCtx, loadSpan := telemetry.StartAppSpan(ctx, "payment.load_invoice",
+		attribute.String("payment.invoice_number", req.GetInvoiceNumber()),
+	)
+	invoice, err := s.invoiceRepo.FindByInvoiceNumber(loadCtx, req.GetInvoiceNumber())
+	loadSpan.End()
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		return s.mapError(err)
 	}
 	if strings.EqualFold(invoice.Status, document.InvoiceStatusPaid) {
+		telemetry.RecordSpanError(span, status.Error(codes.FailedPrecondition, "invoice is already paid"))
 		return nil, status.Error(codes.FailedPrecondition, "invoice is already paid")
 	}
 
 	if n := rand.Int(); n < s.failChance {
 		slog.InfoContext(ctx, "payment failed; generated random number below threshold", "number", n, "chance", s.failChance)
-		return s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_FAILED, *now)
+		return s.buildResponse(ctx, req, dto.PaymentStatus_PAYMENT_STATUS_FAILED, *now)
 	}
 
-	if err := s.invoiceRepo.UpdateStatus(ctx, req.GetInvoiceNumber(), document.InvoiceStatusPaid, *now); err != nil {
+	updateCtx, updateSpan := telemetry.StartAppSpan(ctx, "payment.update_invoice_status",
+		attribute.String("payment.invoice_number", req.GetInvoiceNumber()),
+		attribute.String("payment.invoice_status", document.InvoiceStatusPaid),
+	)
+	if err := s.invoiceRepo.UpdateStatus(updateCtx, req.GetInvoiceNumber(), document.InvoiceStatusPaid, *now); err != nil {
+		telemetry.RecordSpanError(updateSpan, err)
+		updateSpan.End()
+		telemetry.RecordSpanError(span, err)
 		return s.mapError(err)
 	}
+	updateSpan.End()
 
-	resp, err := s.buildResponse(req, dto.PaymentStatus_PAYMENT_STATUS_SUCCEEDED, *now)
+	resp, err := s.buildResponse(ctx, req, dto.PaymentStatus_PAYMENT_STATUS_SUCCEEDED, *now)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		slog.ErrorContext(ctx, "build response", "error", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	go func() {
-		asyncCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		asyncBaseCtx := context.WithoutCancel(ctx)
+		asyncCtx, asyncSpan := telemetry.StartAppSpan(asyncBaseCtx, "payment.post_payment_work",
+			attribute.String("payment.invoice_number", resp.GetInvoiceNumber()),
+			attribute.String("payment.receipt_number", resp.GetReceiptNumber()),
+		)
+		asyncCtx, cancel := context.WithTimeout(asyncCtx, 10*time.Second)
 		defer cancel()
+		defer asyncSpan.End()
 
 		if _, err := s.saveReceipt(asyncCtx, resp); err != nil {
+			telemetry.RecordSpanError(asyncSpan, err)
 			slog.ErrorContext(ctx, "save receipt", "error", err)
 			return
 		}
 		if err := s.sendConfirmationMessage(asyncCtx, now, resp); err != nil {
+			telemetry.RecordSpanError(asyncSpan, err)
 			slog.ErrorContext(ctx, "send confirmation message", "error", err)
 			return
 		}
@@ -130,7 +162,13 @@ func (s *paymentMakingService) mapError(err error) (*dto.PayWithCardResponse, er
 	return nil, status.Error(codes.Internal, err.Error())
 }
 
-func (s *paymentMakingService) buildResponse(req *dto.PayWithCardRequest, status dto.PaymentStatus, now time.Time) (*dto.PayWithCardResponse, error) {
+func (s *paymentMakingService) buildResponse(ctx context.Context, req *dto.PayWithCardRequest, status dto.PaymentStatus, now time.Time) (*dto.PayWithCardResponse, error) {
+	_, span := telemetry.StartAppSpan(ctx, "payment.build_response",
+		attribute.String("payment.invoice_number", req.GetInvoiceNumber()),
+		attribute.String("payment.status", status.String()),
+	)
+	defer span.End()
+
 	cardNumber := req.GetCard().GetNumber()
 	cardNumberLast4 := cardNumber[len(cardNumber)-4:]
 
@@ -141,6 +179,7 @@ func (s *paymentMakingService) buildResponse(req *dto.PayWithCardRequest, status
 
 	receiptNumber, err := util.GenerateHumanFriendlyId("RCPT", now)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		return nil, &appErrors.UnexpectedErr{Msg: "failed to generate receipt number", Err: err}
 	}
 
@@ -155,13 +194,21 @@ func (s *paymentMakingService) buildResponse(req *dto.PayWithCardRequest, status
 }
 
 func (s *paymentMakingService) saveReceipt(ctx context.Context, resp *dto.PayWithCardResponse) (document.Receipt, error) {
+	ctx, span := telemetry.StartAppSpan(ctx, "payment.save_receipt",
+		attribute.String("payment.invoice_number", resp.GetInvoiceNumber()),
+		attribute.String("payment.receipt_number", resp.GetReceiptNumber()),
+	)
+	defer span.End()
+
 	receipt, err := document.NewReceiptFromProtMessage(resp)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		return document.Receipt{}, err
 	}
 
 	receiptId, err := s.receiptRepo.Add(ctx, receipt)
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		var alreadyExistsErr *dbErrors.AlreadyExistsErr
 		if errors.As(err, &alreadyExistsErr) {
 			return document.Receipt{}, &appErrors.AlreadyExistsErr{Err: err}
@@ -181,8 +228,15 @@ func (s *paymentMakingService) saveReceipt(ctx context.Context, resp *dto.PayWit
 }
 
 func (s *paymentMakingService) sendConfirmationMessage(ctx context.Context, now *time.Time, resp *dto.PayWithCardResponse) error {
+	ctx, span := telemetry.StartAppSpan(ctx, "payment.publish_confirmation",
+		attribute.String("payment.invoice_number", resp.GetInvoiceNumber()),
+		attribute.String("payment.receipt_number", resp.GetReceiptNumber()),
+	)
+	defer span.End()
+
 	invoice, err := s.invoiceRepo.FindByInvoiceNumber(ctx, resp.GetInvoiceNumber())
 	if err != nil {
+		telemetry.RecordSpanError(span, err)
 		var notFoundErr *dbErrors.InvoiceNotFoundErr
 		if errors.As(err, &notFoundErr) {
 			return &appErrors.InvoiceNotFoundErr{Err: err}
@@ -208,6 +262,7 @@ func (s *paymentMakingService) sendConfirmationMessage(ctx context.Context, now 
 	routingKey := fmt.Sprintf("booking.%s.confirmation", invoice.BookingId)
 
 	if err := s.paymentProducer.Publish(ctx, confirmation, routingKey); err != nil {
+		telemetry.RecordSpanError(span, err)
 		return &appErrors.UnexpectedErr{
 			Msg: "unexpected error happened while publishing payment confirmation message",
 			Err: err,

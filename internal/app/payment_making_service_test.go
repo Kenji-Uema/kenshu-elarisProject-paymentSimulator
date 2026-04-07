@@ -26,7 +26,7 @@ func TestPaymentMakingService_BuildResponse(t *testing.T) {
 	s := &paymentMakingService{}
 	now := time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC)
 
-	resp, err := s.buildResponse(validPayWithCardRequest(), dto.PaymentStatus_PAYMENT_STATUS_SUCCEEDED, now)
+	resp, err := s.buildResponse(context.Background(), validPayWithCardRequest(), dto.PaymentStatus_PAYMENT_STATUS_SUCCEEDED, now)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
