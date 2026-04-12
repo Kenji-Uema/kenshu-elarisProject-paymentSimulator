@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/util"
 	"github.com/Kenji-Uema/paymentSimulator/internal/app/validation"
@@ -19,6 +20,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 type InvoiceService interface {
@@ -124,10 +126,34 @@ func (s *invoiceService) processInvoiceDelivery(ctx context.Context, delivery am
 
 func (s *invoiceService) unmarshalRequest(delivery amqp.Delivery) (*dto.CreateInvoicePaymentRequest, error) {
 	var createInvoiceRequest dto.CreateInvoicePaymentRequest
-	if err := protojson.Unmarshal(delivery.Body, &createInvoiceRequest); err != nil {
-		return nil, &appErrors.CorruptedDataError{Msg: "could not unmarshal message to dto.CreateInvoicePaymentRequest", Err: err}
+	contentType := strings.ToLower(strings.TrimSpace(delivery.ContentType))
+
+	switch contentType {
+	case "", "application/protobuf":
+		if err := proto.Unmarshal(delivery.Body, &createInvoiceRequest); err == nil {
+			return &createInvoiceRequest, nil
+		} else if contentType == "application/protobuf" {
+			return nil, &appErrors.CorruptedDataError{Msg: "could not unmarshal protobuf message to dto.CreateInvoicePaymentRequest", Err: err}
+		}
+	case "application/json":
+		if err := protojson.Unmarshal(delivery.Body, &createInvoiceRequest); err == nil {
+			return &createInvoiceRequest, nil
+		} else {
+			return nil, &appErrors.CorruptedDataError{Msg: "could not unmarshal json message to dto.CreateInvoicePaymentRequest", Err: err}
+		}
 	}
-	return &createInvoiceRequest, nil
+
+	if err := proto.Unmarshal(delivery.Body, &createInvoiceRequest); err == nil {
+		return &createInvoiceRequest, nil
+	}
+	if err := protojson.Unmarshal(delivery.Body, &createInvoiceRequest); err == nil {
+		return &createInvoiceRequest, nil
+	}
+
+	return nil, &appErrors.CorruptedDataError{
+		Msg: fmt.Sprintf("could not unmarshal message to dto.CreateInvoicePaymentRequest; unsupported content_type=%q", delivery.ContentType),
+		Err: errors.New("message body is neither valid protobuf nor valid protobuf json"),
+	}
 }
 
 func (s *invoiceService) generateInvoiceDoc(ctx context.Context, createInvoiceRequest *dto.CreateInvoicePaymentRequest) (document.Invoice, error) {

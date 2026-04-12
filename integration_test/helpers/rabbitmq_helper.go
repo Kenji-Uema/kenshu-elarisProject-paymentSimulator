@@ -23,7 +23,7 @@ func SetupRabbitmqExchangesAndQueues(t FullGinkgoTInterface, amqpCh *amqp.Channe
 	confirmationQueue := fmt.Sprintf("it.payment.confirmation.%d", time.Now().UnixNano())
 
 	MustDeclareExchange(t, amqpCh, "payment.events")
-	MustDeclareAndBindQueue(t, amqpCh, paymentRequestQueue, "payment.events", "payment.payer-123.request")
+	MustDeclareAndBindQueue(t, amqpCh, paymentRequestQueue, "payment.events", "guest.payer-123")
 	MustDeclareAndBindQueue(t, amqpCh, confirmationQueue, "payment.events", "booking.booking-123.confirmation")
 
 	paymentRequestDeliveries, err := amqpCh.Consume(paymentRequestQueue, "", true, false, false, false, nil)

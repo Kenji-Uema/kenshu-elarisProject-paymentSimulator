@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("default flow", Ordered, func() {
@@ -25,13 +26,13 @@ var _ = Describe("default flow", Ordered, func() {
 
 	It("receives an request to generate an invoice", func() {
 		createReq := helpers.ValidCreateInvoiceRequest()
-		createReqBody, err := protojson.Marshal(createReq)
+		createReqBody, err := proto.Marshal(createReq)
 		if err != nil {
 			t.Fatalf("marshal create invoice request: %v", err)
 		}
 
 		if err := amqpCh.PublishWithContext(context.Background(), "", "invoice.requests", false, false, amqp.Publishing{
-			ContentType: "application/json",
+			ContentType: "application/protobuf",
 			Body:        createReqBody,
 		}); err != nil {
 			t.Fatalf("publish invoice creation request: %v", err)
@@ -42,7 +43,7 @@ var _ = Describe("default flow", Ordered, func() {
 	It("customer receives an payment request", func() {
 		paymentRequestMsg := helpers.WaitForDelivery(t, paymentRequestDeliveries, 20*time.Second)
 
-		if err := protojson.Unmarshal(paymentRequestMsg.Body, &paymentReq); err != nil {
+		if err := proto.Unmarshal(paymentRequestMsg.Body, &paymentReq); err != nil {
 			t.Fatalf("unmarshal payment request: %v", err)
 		}
 		if paymentReq.GetInvoiceNumber() == "" {
@@ -69,7 +70,7 @@ var _ = Describe("default flow", Ordered, func() {
 	It("paymentSimulator notifies other system about payment confirmation", func() {
 		confirmationMsg := helpers.WaitForDelivery(t, confirmationDeliveries, 20*time.Second)
 		var confirmation dto.PaymentConfirmation
-		if err := protojson.Unmarshal(confirmationMsg.Body, &confirmation); err != nil {
+		if err := proto.Unmarshal(confirmationMsg.Body, &confirmation); err != nil {
 			t.Fatalf("unmarshal confirmation: %v", err)
 		}
 		if confirmation.GetInvoiceNumber() != paymentReq.GetInvoiceNumber() {

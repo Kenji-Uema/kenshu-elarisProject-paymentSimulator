@@ -18,7 +18,6 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/errors/validationErrors"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -255,7 +254,7 @@ func TestInvoiceService_PublishPaymentRequest(t *testing.T) {
 func TestInvoiceService_ProcessInvoiceDelivery(t *testing.T) {
 	t.Run("invalid payload nacks without requeue", func(t *testing.T) {
 		ack := &mqfakes.FakeAcknowledger{}
-		delivery := amqp.Delivery{Acknowledger: ack, DeliveryTag: 99, Body: []byte("{")}
+		delivery := amqp.Delivery{Acknowledger: ack, DeliveryTag: 99, ContentType: "application/protobuf", Body: []byte("{")}
 
 		service := &invoiceService{}
 		err := service.processInvoiceDelivery(context.Background(), delivery)
@@ -473,12 +472,12 @@ func TestInvoiceService_StartInvoiceProcessing(t *testing.T) {
 func validDelivery(t *testing.T, ack *mqfakes.FakeAcknowledger) amqp.Delivery {
 	t.Helper()
 
-	body, err := protojson.Marshal(validCreateInvoiceRequest())
+	body, err := proto.Marshal(validCreateInvoiceRequest())
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
 	}
 
-	return amqp.Delivery{Acknowledger: ack, DeliveryTag: 1, Body: body}
+	return amqp.Delivery{Acknowledger: ack, DeliveryTag: 1, ContentType: "application/protobuf", Body: body}
 }
 
 func validCreateInvoiceRequest() *dto.CreateInvoicePaymentRequest {

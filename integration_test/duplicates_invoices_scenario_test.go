@@ -9,7 +9,7 @@ import (
 	"github.com/Kenji-Uema/paymentSimulator/internal/domain/dto"
 	. "github.com/onsi/ginkgo/v2"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("duplicates flow", Ordered, func() {
@@ -24,7 +24,7 @@ var _ = Describe("duplicates flow", Ordered, func() {
 
 		paymentRequestQueue := fmt.Sprintf("it.payment.dup.request.%d", time.Now().UnixNano())
 		helpers.MustDeclareExchange(t, amqpCh, "payment.events")
-		helpers.MustDeclareAndBindQueue(t, amqpCh, paymentRequestQueue, "payment.events", "payment.payer-123.request")
+		helpers.MustDeclareAndBindQueue(t, amqpCh, paymentRequestQueue, "payment.events", "guest.payer-123")
 
 		var err error
 		paymentRequestDeliveries, err = amqpCh.Consume(paymentRequestQueue, "", true, false, false, false, nil)
@@ -39,14 +39,14 @@ var _ = Describe("duplicates flow", Ordered, func() {
 		createReq.BookingId = "booking-dup-123"
 		createReq.Payer.DocumentNumber = "99988877766"
 
-		createReqBody, err := protojson.Marshal(createReq)
+		createReqBody, err := proto.Marshal(createReq)
 		if err != nil {
 			t.Fatalf("marshal create invoice request: %v", err)
 		}
 
 		for i := 0; i < 2; i++ {
 			if err := amqpCh.PublishWithContext(context.Background(), "", "invoice.requests", false, false, amqp.Publishing{
-				ContentType: "application/json",
+				ContentType: "application/protobuf",
 				Body:        createReqBody,
 			}); err != nil {
 				t.Fatalf("publish invoice creation request: %v", err)
@@ -58,10 +58,10 @@ var _ = Describe("duplicates flow", Ordered, func() {
 		firstMsg := helpers.WaitForDelivery(t, paymentRequestDeliveries, 20*time.Second)
 		secondMsg := helpers.WaitForDelivery(t, paymentRequestDeliveries, 20*time.Second)
 
-		if err := protojson.Unmarshal(firstMsg.Body, &firstReq); err != nil {
+		if err := proto.Unmarshal(firstMsg.Body, &firstReq); err != nil {
 			t.Fatalf("unmarshal first payment request: %v", err)
 		}
-		if err := protojson.Unmarshal(secondMsg.Body, &secondReq); err != nil {
+		if err := proto.Unmarshal(secondMsg.Body, &secondReq); err != nil {
 			t.Fatalf("unmarshal second payment request: %v", err)
 		}
 	})
