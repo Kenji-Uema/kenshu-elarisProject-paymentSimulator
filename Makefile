@@ -1,3 +1,5 @@
+IMAGE_TAG ?= 1.0.0
+
 codbuild: generate
 	GOCACHE=$(PWD)/.gocache GOMODCACHE=$(PWD)/.gomodcache go build -o $(PWD)/bin/payment-simulator ./internal
 
@@ -8,4 +10,4 @@ generate:
 	npx buf generate
 
 docker-build:
-	 docker buildx build --build-arg SERVICE_NAME=payment-simulator --build-arg VERSION=1.0.3 -t payment-simulator:1.0.3 --load .
+	 docker buildx build --build-arg SERVICE_NAME=payment-simulator --build-arg VERSION=$(IMAGE_TAG) -t payment-simulator:$(IMAGE_TAG) --load .

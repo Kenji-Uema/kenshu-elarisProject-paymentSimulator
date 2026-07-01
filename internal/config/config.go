@@ -22,9 +22,10 @@ type Configs struct {
 }
 
 type AppConfig struct {
-	ServiceName string `env:"SERVICE_NAME" envDefault:"kenshu-elarisProject-paymentSimulator"`
-	Version     string `env:"VERSION"`
-	LogConfig   struct {
+	ServiceName      string `env:"SERVICE_NAME" envDefault:"aymentSimulator"`
+	Version          string `env:"VERSION" envDefault:"latest"`
+	ServiceNamespace string `env:"SERVICE_NAMESPACE" envDefault:"unknown"`
+	LogConfig        struct {
 		Level int `env:"LOG_LEVEL,required" envDefault:"0"`
 	}
 	ServerConfig struct {

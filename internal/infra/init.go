@@ -27,7 +27,7 @@ type Components struct {
 }
 
 func Init(ctx context.Context, configs config.Configs) (Components, error) {
-	slog.SetDefault(logging.NewLogger(configs.AppConfig.LogConfig.Level))
+	slog.SetDefault(logging.NewLogger(configs.AppConfig))
 
 	shutdownTelemetry, err := telemetry.Init(ctx, configs.TelemetryConfig, configs.AppConfig)
 	if err != nil {
