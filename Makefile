@@ -7,7 +7,7 @@ test:
 	GOCACHE=$(PWD)/.gocache GOMODCACHE=$(PWD)/.gomodcache go test ./...
 
 generate:
-	npx buf generate
+	buf generate
 
 docker-build:
 	 docker buildx build --build-arg SERVICE_NAME=payment-simulator --build-arg VERSION=$(IMAGE_TAG) -t payment-simulator:$(IMAGE_TAG) --load .
